@@ -1,0 +1,95 @@
+library(tidyverse)
+library(lubridate)
+library(forecast)
+library(fda)
+library(ggplot2)
+library(keras)
+
+oil <- read_csv('data/weekly_data.csv')
+
+oil_price <- oil$`Weekly California All Grades All Formulations Retail Gasoline Prices Dollars per Gallon`
+  
+oil_ts <- ts(data = oil_price, start = c(2000, 6), end = c(2023, 12), frequency = 52)
+
+plot(oil_ts)
+
+# splitting into testing and training
+
+# train_proportion <- 0.8
+
+# split_index <- floor(length(oil_ts) * train_proportion)
+
+# train_oil <- window(oil_ts, end = time(oil_ts)[split_index])
+# test_oil <- window(oil_ts, start = time(oil_ts)[split_index])
+
+# normalizing data
+
+# Accessing predictor variables and target variable
+#x_train <- as.matrix(train_oil)
+#y_train <- as.integer(time(train_oil))
+
+#x_test <- as.matrix(test_oil)
+#y_test <- as.integer(time(test_oil))
+
+# Data preparation
+window_size <- 10
+train_size <- floor(length(oil_ts) * 0.8)  # 80% for training
+
+train_data <- oil_ts[1:train_size]
+test_data <- oil_ts[(train_size + 1):length(oil_ts)]
+
+# Function to create input sequences and corresponding labels
+create_sequences <- function(data, window_size) {
+  sequences <- matrix(0, nrow = length(data) - window_size, ncol = window_size)
+  labels <- numeric(length(data) - window_size)
+  
+  for (i in 1:(length(data) - window_size)) {
+    sequences[i, ] <- data[i:(i + window_size - 1)]
+    labels[i] <- data[i + window_size]
+  }
+  
+  list(sequences = array(sequences, dim = c(length(data) - window_size, window_size, 1)), labels = labels)
+}
+
+# Create training sequences and labels
+train_sequences <- create_sequences(train_data, window_size)
+train_sequences_array <- train_sequences$sequences
+train_labels <- train_sequences$labels
+
+# Build a simple LSTM model
+model <- keras_model_sequential() %>%
+  layer_lstm(units = 50, input_shape = c(window_size, 1)) %>%
+  layer_dense(units = 1)
+
+# Compile the model
+model %>% compile(
+  loss = 'mean_squared_error',
+  optimizer = optimizer_adam(),
+  metrics = c('mean_absolute_error')
+)
+
+# Train the model
+history <- model %>% fit(
+  x = train_sequences_array,
+  y = train_labels,
+  epochs = 50,
+  batch_size = 16,
+  validation_split = 0.2
+)
+
+plot(history)
+
+# Evaluate the model on the test data
+test_sequences <- create_sequences(test_data, window_size)
+test_sequences_matrix <- test_sequences$sequences
+test_labels <- test_sequences$labels
+
+results <- model %>% evaluate(test_sequences_matrix, test_labels)
+
+# Make predictions
+predictions <- model %>% predict(test_sequences_matrix)
+
+# Plot predictions against actual values
+plot(test_labels, type = 'l', col = 'blue', ylab = 'Gasoline Prices')
+lines(predictions, col = 'red')
+legend('topright', legend = c('Actual', 'Predicted'), col = c('blue', 'red'))
