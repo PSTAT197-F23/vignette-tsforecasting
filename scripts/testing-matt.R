@@ -7,8 +7,13 @@ library(keras)
 library(xts)
 
 oil <- read_csv('data/weekly_data.csv')
+#oil <- oil[, 1:2]
+colnames(oil) <- c("Date", "Price")
+oil <- oil %>%
+  mutate(Date = mdy(Date)) %>%
+  arrange(Date)
 
-oil_price <- oil$`Weekly California All Grades All Formulations Retail Gasoline Prices Dollars per Gallon`
+oil_price <- oil$Price
   
 oil_ts <- ts(data = oil_price, start = c(2000, 6), end = c(2023, 12), frequency = 52)
 
@@ -78,4 +83,4 @@ predictions <- model %>% predict(test_sequences_matrix)
 # Plot predictions against actual values
 plot(test_dates, test_labels, type = 'l', col = 'blue', ylab = 'Gasoline Prices', xlab = 'Year')
 lines(test_dates, predictions, col = 'red')
-legend('topright', legend = c('Actual', 'Predicted'), col = c('blue', 'red'), lty = 1)
+legend('topleft', legend = c('Actual', 'Predicted'), col = c('blue', 'red'), lty = 1)
