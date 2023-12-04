@@ -4,6 +4,7 @@ library(forecast)
 library(fda)
 library(ggplot2)
 library(keras)
+library(xts)
 
 oil <- read_csv('data/weekly_data.csv')
 
@@ -13,30 +14,15 @@ oil_ts <- ts(data = oil_price, start = c(2000, 6), end = c(2023, 12), frequency 
 
 plot(oil_ts)
 
-# splitting into testing and training
-
-# train_proportion <- 0.8
-
-# split_index <- floor(length(oil_ts) * train_proportion)
-
-# train_oil <- window(oil_ts, end = time(oil_ts)[split_index])
-# test_oil <- window(oil_ts, start = time(oil_ts)[split_index])
-
-# normalizing data
-
-# Accessing predictor variables and target variable
-#x_train <- as.matrix(train_oil)
-#y_train <- as.integer(time(train_oil))
-
-#x_test <- as.matrix(test_oil)
-#y_test <- as.integer(time(test_oil))
-
 # Data preparation
 window_size <- 10
 train_size <- floor(length(oil_ts) * 0.8)  # 80% for training
 
 train_data <- oil_ts[1:train_size]
 test_data <- oil_ts[(train_size + 1):length(oil_ts)]
+
+train_dates <- time(oil_ts)[1:train_size]
+test_dates <- time(oil_ts)[(train_size + 1):length(oil_ts)]
 
 # Function to create input sequences and corresponding labels
 create_sequences <- function(data, window_size) {
@@ -90,6 +76,6 @@ results <- model %>% evaluate(test_sequences_matrix, test_labels)
 predictions <- model %>% predict(test_sequences_matrix)
 
 # Plot predictions against actual values
-plot(test_labels, type = 'l', col = 'blue', ylab = 'Gasoline Prices')
+plot(test_dates, test_labels, type = 'l', col = 'blue', ylab = 'Gasoline Prices', xlab = 'Year')
 lines(predictions, col = 'red')
 legend('topright', legend = c('Actual', 'Predicted'), col = c('blue', 'red'))
