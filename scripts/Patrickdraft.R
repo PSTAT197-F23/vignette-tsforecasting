@@ -236,4 +236,9 @@ ggplot(forecast_df, aes(x = Date)) +
 
 
 # keras neural network
-library(keras)
+library(zoo)
+
+gas_price_ts <- ts(data$Price, start = c(2000, 22), end = c(2023, 47), frequency = 52)
+model = nnetar(gas_price_ts)
+forecast = forecast(model, h = 100)
+plot(forecast)
