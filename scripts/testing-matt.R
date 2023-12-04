@@ -22,7 +22,7 @@ train_data <- oil_ts[1:train_size]
 test_data <- oil_ts[(train_size + 1):length(oil_ts)]
 
 train_dates <- time(oil_ts)[1:train_size]
-test_dates <- time(oil_ts)[(train_size + 1):length(oil_ts)]
+test_dates <- time(oil_ts)[(train_size + 1 + window_size):length(oil_ts)]
 
 # Function to create input sequences and corresponding labels
 create_sequences <- function(data, window_size) {
@@ -77,5 +77,5 @@ predictions <- model %>% predict(test_sequences_matrix)
 
 # Plot predictions against actual values
 plot(test_dates, test_labels, type = 'l', col = 'blue', ylab = 'Gasoline Prices', xlab = 'Year')
-lines(predictions, col = 'red')
-legend('topright', legend = c('Actual', 'Predicted'), col = c('blue', 'red'))
+lines(test_dates, predictions, col = 'red')
+legend('topright', legend = c('Actual', 'Predicted'), col = c('blue', 'red'), lty = 1)
