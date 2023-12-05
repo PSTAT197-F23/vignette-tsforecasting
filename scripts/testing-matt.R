@@ -6,7 +6,7 @@ library(ggplot2)
 library(keras)
 library(xts)
 
-oil <- read_csv('data/weekly_data.csv')
+oil <- read_csv('data/weekly_data.csv', show_col_types = FALSE)
 #oil <- oil[, 1:2]
 colnames(oil) <- c("Date", "Price")
 oil <- oil %>%
