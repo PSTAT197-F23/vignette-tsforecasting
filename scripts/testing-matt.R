@@ -4,8 +4,8 @@ library(forecast)
 library(fda)
 library(ggplot2)
 library(keras)
-library(xts)
 
+set.seed(3722287)
 oil <- read_csv('data/weekly_data.csv', show_col_types = FALSE)
 #oil <- oil[, 1:2]
 colnames(oil) <- c("Date", "Price")
@@ -58,6 +58,8 @@ model %>% compile(
   optimizer = optimizer_adam(),
   metrics = c('mean_absolute_error')
 )
+
+summary(model)
 
 # Train the model
 history <- model %>% fit(
