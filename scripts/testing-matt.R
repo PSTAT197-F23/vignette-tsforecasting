@@ -87,4 +87,4 @@ predictions <- model %>% predict(test_sequences_matrix)
 # Plot predictions against actual values
 plot(test_dates, test_labels, type = 'l', col = 'blue', ylab = 'Gasoline Prices', xlab = 'Year')
 lines(test_dates, predictions, col = 'red')
-legend('topleft', legend = c('Actual', '
+legend('topleft', legend = c('Actual', 'Predicted'), col = c('blue', 'red'), lty = 1)
