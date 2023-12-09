@@ -52,10 +52,12 @@ model <- keras_model_sequential() %>%
   layer_lstm(units = 50, input_shape = c(window_size, 1)) %>%
   layer_dense(units = 1)
 
+optimizer <- optimizer_nadam(learning_rate = 0.001)
+
 # Compile the model
 model %>% compile(
   loss = 'mean_squared_error',
-  optimizer = optimizer_adam(),
+  optimizer = optimizer,
   metrics = c('mean_absolute_error')
 )
 
