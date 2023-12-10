@@ -1,1 +1,1 @@
-# vignette-tsforecasting
+Vignette on implementing time series anakysis on Gas Price data; created as a class project for PSTAT197A in Fall 2023.

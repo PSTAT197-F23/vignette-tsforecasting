@@ -5,31 +5,19 @@ library(fda)
 library(ggplot2)
 library(keras)
 
-oil <- read_csv('data/weekly_data.csv')
+set.seed(3722287)
+oil <- read_csv('data/weekly_data.csv', show_col_types = FALSE)
+#oil <- oil[, 1:2]
+colnames(oil) <- c("Date", "Price")
+oil <- oil %>%
+  mutate(Date = mdy(Date)) %>%
+  arrange(Date)
 
-oil_price <- oil$`Weekly California All Grades All Formulations Retail Gasoline Prices Dollars per Gallon`
+oil_price <- oil$Price
   
 oil_ts <- ts(data = oil_price, start = c(2000, 6), end = c(2023, 12), frequency = 52)
 
 plot(oil_ts)
-
-# splitting into testing and training
-
-# train_proportion <- 0.8
-
-# split_index <- floor(length(oil_ts) * train_proportion)
-
-# train_oil <- window(oil_ts, end = time(oil_ts)[split_index])
-# test_oil <- window(oil_ts, start = time(oil_ts)[split_index])
-
-# normalizing data
-
-# Accessing predictor variables and target variable
-#x_train <- as.matrix(train_oil)
-#y_train <- as.integer(time(train_oil))
-
-#x_test <- as.matrix(test_oil)
-#y_test <- as.integer(time(test_oil))
 
 # Data preparation
 window_size <- 10
@@ -37,6 +25,9 @@ train_size <- floor(length(oil_ts) * 0.8)  # 80% for training
 
 train_data <- oil_ts[1:train_size]
 test_data <- oil_ts[(train_size + 1):length(oil_ts)]
+
+train_dates <- time(oil_ts)[1:train_size]
+test_dates <- time(oil_ts)[(train_size + 1 + window_size):length(oil_ts)]
 
 # Function to create input sequences and corresponding labels
 create_sequences <- function(data, window_size) {
@@ -61,12 +52,16 @@ model <- keras_model_sequential() %>%
   layer_lstm(units = 50, input_shape = c(window_size, 1)) %>%
   layer_dense(units = 1)
 
+optimizer <- optimizer_nadam(learning_rate = 0.001)
+
 # Compile the model
 model %>% compile(
   loss = 'mean_squared_error',
-  optimizer = optimizer_adam(),
+  optimizer = optimizer,
   metrics = c('mean_absolute_error')
 )
+
+summary(model)
 
 # Train the model
 history <- model %>% fit(
@@ -90,6 +85,6 @@ results <- model %>% evaluate(test_sequences_matrix, test_labels)
 predictions <- model %>% predict(test_sequences_matrix)
 
 # Plot predictions against actual values
-plot(test_labels, type = 'l', col = 'blue', ylab = 'Gasoline Prices')
-lines(predictions, col = 'red')
-legend('topright', legend = c('Actual', 'Predicted'), col = c('blue', 'red'))
+plot(test_dates, test_labels, type = 'l', col = 'blue', ylab = 'Gasoline Prices', xlab = 'Year')
+lines(test_dates, predictions, col = 'red')
+legend('topleft', legend = c('Actual', 'Predicted'), col = c('blue', 'red'), lty = 1)
