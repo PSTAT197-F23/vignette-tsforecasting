@@ -5,6 +5,7 @@ library(dplyr)
 library(fda)
 library(broom)
 library(qpcR)
+library(tseries)
 
 
 # Read and prepare the data
@@ -14,6 +15,146 @@ colnames(data) <- c("Date", "Price")
 data <- data %>%
   mutate(Date = mdy(Date)) %>%
   arrange(Date)
+head(data)
+
+
+ts_data <- ts(data$Price)
+
+# Perform the Augmented Dickey-Fuller test
+adf_test_result <- adf.test(ts_data, alternative = "stationary")
+
+# Print the results of the test
+print(adf_test_result)
+
+# Differencing (1st difference)
+diff_data <- diff(ts_data)
+
+# Logarithmic transformation
+log_data <- log(ts_data)
+
+# Box-Cox transformation (Lambda can be chosen based on the nature of the data; often set to 0 or 0.5)
+# You can use BoxCox.lambda function to find an optimal lambda
+lambda <- BoxCox.lambda(ts_data)
+boxcox_data <- BoxCox(ts_data, lambda)
+
+# ARIMA model on differenced data
+best_arima_diff <- auto.arima(diff_data)
+print(summary(best_arima_diff))
+
+# ARIMA model on log-transformed data
+best_arima_log <- auto.arima(log_data)
+print(summary(best_arima_log))
+
+# ARIMA model on Box-Cox transformed data
+best_arima_boxcox <- auto.arima(boxcox_data)
+print(summary(best_arima_boxcox))
+
+
+# Log transformation
+log_data <- log(ts_data)
+
+# Differencing the log-transformed data (1st difference)
+diff_log_data <- diff(log_data)
+
+# Build ARIMA model on the log-transformed and differenced data
+best_arima_diff_log <- auto.arima(diff_log_data)
+print(summary(best_arima_diff_log))
+
+# Assuming 'best_arima_diff_log' is your fitted ARIMA model
+
+# Plot ACF and PACF of residuals
+acf(residuals(best_arima_diff_log), main="ACF of Residuals")
+pacf(residuals(best_arima_diff_log), main="PACF of Residuals")
+
+# Ljung-Box test on residuals
+# The 'lag' parameter can be adjusted based on your dataset size and frequency
+ljung_box_result <- Box.test(residuals(best_arima_diff_log), lag=20, type="Ljung-Box")
+
+# Print the results of the Ljung-Box test
+print(ljung_box_result)
+
+# Assuming 'best_arima_diff_log' is your fitted ARIMA model
+
+# Get residuals from the model
+residuals_diff_log <- residuals(best_arima_diff_log)
+
+# Histogram of residuals with overlaid normal distribution
+hist(residuals_diff_log, probability = TRUE, breaks = 20, col = "blue", main = "Histogram of Residuals")
+m <- mean(residuals_diff_log)
+std <- sd(residuals_diff_log)
+curve(dnorm(x, mean = m, sd = std), add = TRUE, col = "red")
+
+# Time plot of residuals
+plot.ts(residuals_diff_log, main = "Time Plot of Residuals")
+abline(h = m, col = "blue")
+
+# Q-Q plot of residuals
+qqnorm(residuals_diff_log, main = "Normal Q-Q Plot")
+qqline(residuals_diff_log, col = "blue")
+
+# ACF and PACF of the residuals
+par(mfrow = c(1, 2))
+acf(residuals_diff_log, lag.max = 40, main = "ACF of Residuals")
+pacf(residuals_diff_log, lag.max = 40, main = "PACF of Residuals")
+
+# Shapiro-Wilk test for normality
+shapiro_test <- shapiro.test(residuals_diff_log)
+print(shapiro_test)
+
+# Ljung-Box test for autocorrelation in residuals
+ljung_box_test <- Box.test(residuals_diff_log, lag = 12, type = "Ljung-Box", fitdf = 2)
+print(ljung_box_test)
+
+# Ljung-Box test for autocorrelation in squared residuals (to check for ARCH effects)
+ljung_box_test_squared <- Box.test(residuals_diff_log^2, lag = 12, type = "Ljung-Box")
+print(ljung_box_test_squared)
+
+
+# Forecast future values
+future_forecast <- forecast(best_arima_diff_log, h = 20)
+
+# Find the time of the last 100 observations
+last_time <- end(future_forecast$mean)[1] - 100/frequency(ts_data)
+
+# Plot the last 100 observed values and the forecasted values
+plot(future_forecast, xlim = c(last_time, end(future_forecast$mean)[1]), xlab = "Time", ylab = "Price", main = "Last 100 Observations and Forecast")
+
+# Fit ARIMA model on the log-transformed training data
+fit.2 <- arima(best_arima_diff_log, order = c(3,1,2), method = "ML")
+
+# Forecast future values (12-step ahead)
+pred.tr <- predict(fit.2, n.ahead = 11)
+U.tr <- pred.tr$pred + 2 * pred.tr$se
+L.tr <- pred.tr$pred - 2 * pred.tr$se
+
+# Plot the 12 forecasts on transformed data
+ts.plot(logtrain, xlim = c(1, length(logtrain) + 11), ylim = c(min(logtrain), max(U.tr)), main = "Graph with 12 Forecasts on Transformed Data")
+lines(U.tr, col = "blue", lty = "dashed")
+lines(L.tr, col = "blue", lty = "dashed")
+points((length(logtrain) + 1):(length(logtrain) + 11), pred.tr$pred, col = "red")
+
+# Calculate forecasted values on original data
+pred.orig <- exp(pred.tr$pred)
+U <- exp(U.tr)
+L <- exp(L.tr)
+
+# Plot the 12 forecasts on original data
+ts.plot(train_data, xlim = c(1, length(train_data) + 11), ylim = c(min(train_data), max(U)), main = "Graph with 12 Forecasts on Original Data")
+lines(U, col = "blue", lty = "dashed")
+lines(L, col = "blue", lty = "dashed")
+points((length(train_data) + 1):(length(train_data) + 11), pred.orig, col = "red")
+
+# Forecast future values (100-step ahead)
+pred.tra <- predict(fit.2, n.ahead = 100)
+U.tra <- pred.tra$pred + 2 * pred.tra$se
+L.tra <- pred.tra$pred - 2 * pred.tra$se
+
+# Plot the 100 forecasts on transformed data
+ts.plot(logtrain, xlim = c(100, length(logtrain) + 100), ylim = c(min(logtrain), max(U.tra)), main = "Graph with 100 Forecasts on Transformed Data")
+lines(U.tra, col = "blue", lty = "dashed")
+lines(L.tra, col = "blue", lty = "dashed")
+points((length(logtrain) + 1):(length(logtrain) + 100), pred.tra$pred, col = "red")
+
 
 
 #EDA
@@ -234,11 +375,3 @@ ggplot(forecast_df, aes(x = Date)) +
 
 
 
-
-# keras neural network
-library(zoo)
-
-gas_price_ts <- ts(data$Price, start = c(2000, 22), end = c(2023, 47), frequency = 52)
-model = nnetar(gas_price_ts)
-forecast = forecast(model, h = 100)
-plot(forecast)
