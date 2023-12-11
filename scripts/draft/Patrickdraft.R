@@ -9,8 +9,7 @@ library(tseries)
 
 
 # Read and prepare the data
-data <- read.csv("~/Desktop/PSTAT 197/vignette-tsforecasting/data/Weekly_California_All_Grades_All_Formulations_Retail_Gasoline_Prices.csv", skip = 5, header = TRUE)
-data <- data[, 1:2]
+data <- read.csv("~/Desktop/PSTAT 197/vignette-tsforecasting/data/processed.csv", header = TRUE)
 colnames(data) <- c("Date", "Price")
 data <- data %>%
   mutate(Date = mdy(Date)) %>%

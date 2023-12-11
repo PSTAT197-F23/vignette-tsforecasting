@@ -1,0 +1,186 @@
+---
+title: "ARIMA modeling"
+author: "Patrick Moon"
+date: "2023-12-11"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(tidyverse)
+library(lubridate)
+library(forecast)
+library(dplyr)
+library(tseries)
+```
+
+The initial step in our time series analysis is to load and prepare the data for analysis. We begin by importing the data from a CSV file using the read.csv function:
+```{r}
+# Read and prepare the data
+data <- read.csv("~/Desktop/PSTAT 197/vignette-tsforecasting/data/processed.csv", header = TRUE)
+colnames(data) <- c("Date", "Price")
+data <- data %>%
+  mutate(Date = mdy(Date)) %>%
+  arrange(Date)
+```
+Once the data is loaded, we rename the columns into "Date" and "Price" for clarity. The mutate(Date = mdy(Date)) command converts the "Date" column into an actual date format (assuming the dates are in month-day-year order). Then, arrange(Date) sorts the data in ascending order of date, which is crucial for time series analysis. 
+
+To verify our data preparation steps, we display the first few rows:
+```{r}
+head(data)
+```
+The output shows the initial entries in our dataset, confirming that the dates are correctly formatted and sorted.
+
+With our data prepared, we convert the "Price" column into a time series object using the ts() function:
+```{r}
+ts_data <- ts(data$Price)
+```
+
+Before diving into the specifics of the code, it's crucial to understand the concept of stationarity in time series analysis. A time series is said to be stationary if its statistical properties, such as mean, variance, and autocorrelation, are constant over time. In simpler terms, a stationary time series does not exhibit trends or seasonality and has a consistent structure over time, which makes it predictable.
+
+Stationarity is a fundamental assumption in many time series forecasting methods, including ARIMA modeling. This is because predictable behavior in the past will likely persist in the future, making the forecasts more reliable. Non-stationary time series, on the other hand, can change their behavior over time, leading to unreliable and inaccurate predictions.
+
+There are two main types of non-stationarity:
+
+1. Trend Stationarity: Where the series has an underlying trend, but the fluctuations around this trend are stationary.
+Difference Stationarity: Where the series becomes stationary after differencing, i.e., subtracting the current value from the previous value.
+2. The Augmented Dickey-Fuller (ADF) test, which we perform in our analysis, specifically tests for difference stationarity.
+
+With this understanding, we perform the Augmented Dickey-Fuller (ADF) test to check whether our time series data (the gasoline prices) is stationary. This test evaluates the null hypothesis that the time series can be represented by a unit root, indicating it is non-stationary. Essentially, if the test finds strong evidence of a unit root, the time series is likely non-stationary, and vice versa.
+```{r}
+adf_test_result <- adf.test(ts_data, alternative = "stationary")
+print(adf_test_result)
+```
+In this output, the Dickey-Fuller statistic is -3.4466, and the p-value is 0.04743. The p-value is crucial for our decision-making: a low p-value (typically < 0.05) implies that the null hypothesis of non-stationarity can be rejected. Therefore, in our case, with a p-value of 0.04743, we conclude that the time series is stationary. This means that our time series does not have unit root characteristics and is suitable for ARIMA modeling.
+
+
+Before modeling, we split our data to avoid lookahead bias:
+```{r}
+# Determining the split point for training and testing sets
+split_point <- round(nrow(data) * 0.8)
+
+# Creating the training and testing sets
+training_set <- ts_data[1:split_point]
+testing_set <- ts_data[(split_point + 1):length(ts_data)]
+
+```
+This division allows us to evaluate our model on unseen data.
+
+Before moving on to building the model, we can clearly observe the big variance shown in the graph:
+```{r}
+# Plotting the time series data
+ggplot(data, aes(x = Date, y = Price)) + 
+    geom_line() + 
+    theme_minimal() + 
+    labs(title = "Time Series of Gasoline Prices",
+         x = "Date",
+         y = "Price per Gallon")
+```
+
+To address non-stationarity aspects like high variance, we apply log transformation:
+```{r}
+logdata <- log(training_set)
+```
+
+
+```{r}
+# Plot the logtrain data
+ts.plot(diff_log_data, main = "Plot of Log Transformed Training Set",
+        ylab = "Log(Price per Gallon)", xlab = "Time")
+var(ts_data)
+var(diff_log_data)
+```
+The results show a significant reduction in variance, indicating our transformations were effective.
+
+After preparing our data and ensuring it is suitable for time series analysis, we proceed to model selection. The choice of the appropriate ARIMA model is crucial to accurately capturing the underlying patterns in our time series data.
+
+We use the auto.arima function from the forecast package to automatically determine the best fitting ARIMA model. The auto.arima function explores various combinations of AR (autoregressive), I (integrated), and MA (moving average) components to identify the model that best fits our data. It does so by minimizing the AIC (Akaike Information Criterion), a measure that balances the model's fit against its complexity.
+```{r}
+# Using auto.arima to find the best ARIMA model
+optimal_arima_model <- auto.arima(logdata)
+summary(optimal_arima_model)
+```
+From the summary above, this model, ARIMA(3,1,2), suggests a somewhat complex dynamic in the data, with three autoregressive terms, one level of differencing, and two moving average terms. The coefficients of the model and their standard errors provide insights into the significance and impact of each term in the model. Lower AIC and BIC values indicate a better model fit, taking into account the number of parameters.
+
+# Model Diagnostics
+After fitting the ARIMA model, we analyze its residuals to assess the adequacy of the model.
+The plots of residuals, their ACF, and PACF, along with the histogram and Q-Q plot, are crucial for understanding whether the residuals behave like white noise, which is a key assumption in ARIMA modeling. The histogram and Q-Q plot assess the normality of the residuals.
+```{r}
+# Fit the ARIMA(1,0,0) model to the log-differenced data
+fit_arima <- Arima(logdata, order = c(3,1,2))
+
+# Check the residuals
+residuals <- residuals(fit_arima)
+
+plot(residuals, main = "Residuals of ARIMA(1,1,0) Model")
+acf(residuals, main = "ACF of Residuals")
+pacf(residuals, main = "PACF of Residuals")
+hist(residuals, main = "Histogram of Residuals", xlab = "Residuals", breaks = 30)
+qqnorm(residuals); qqline(residuals)
+```
+
+Finally, we conduct statistical tests to further assess the residuals:
+```{r}
+# Shapiro-Wilk test for normality
+shapiro_test <- shapiro.test(residuals)
+print(shapiro_test)
+
+
+ljung_box_test <- Box.test(residuals, lag = 12, type = "Ljung-Box", fitdf = 5)
+print(ljung_box_test)
+
+# Ljung-Box test for autocorrelation in squared residuals (to check for ARCH effects)
+# Here also, we use the same lag value
+ljung_box_test_squared <- Box.test(residuals^2, lag = 12, type = "Ljung-Box", fitdf = 5)
+print(ljung_box_test_squared)
+
+```
+Shapiro-Wilk Normality Test: This test checks the normality of the residuals. The result (W = 0.87765, p-value < 2.2e-16) suggests a significant deviation from normality. This might indicate that the model fails to capture some aspect of the data's behavior, a common challenge in economic time series influenced by complex, non-linear factors.
+
+Box-Ljung Test on Residuals: This test assesses autocorrelation in the residuals. The result (X-squared = 20.325, df = 7, p-value = 0.004909) implies significant autocorrelation, suggesting that the model might not be capturing all the temporal dependencies in the data.
+
+Box-Ljung Test on Squared Residuals: This test checks for autocorrelation in squared residuals, indicating ARCH effects. The result (X-squared = 126.84, df = 7, p-value < 2.2e-16) points to the presence of time-varying volatility, a common feature in financial data but difficult to model with standard ARIMA.
+
+The results of the diagnostic tests reveal some limitations of the ARIMA(3,1,2) model in fully capturing the dynamics of the gasoline price data. The complex nature of economic time series, often driven by human behavior and external factors, poses challenges to linear modeling approaches like ARIMA. Future explorations might involve more sophisticated models, including those that can handle non-linearity and volatility, such as GARCH models, or the use of machine learning techniques for more robust forecasting in the face of such complex data.
+
+
+
+```{r}
+# Forecasting future values using the fitted ARIMA model
+h <- length(testing_set)  # Number of periods to forecast should match the length of testing_set
+forecasted_values <- forecast(fit_arima, h = h)
+
+# Plotting the forecasted values
+plot(forecasted_values)
+```
+The provided plot above illustrates the forecasts from an ARIMA(3,1,2) model alongside historical data. The historical time series data, represented by a fluctuating line, transitions into the forecasted period where a blue line indicates the model's predicted values, surrounded by shaded areas denoting confidence intervals. These intervals represent the uncertainty inherent in the predictions, with uncertainty naturally broadening as the forecast extends further into the future. Notably, the forecasts appear relatively stable, suggesting that the model either captures the persistence of the series or may not fully reflect potential future volatility. While the visual stability of the forecast is evident, actual model performance should be quantitatively assessed against the actual observed values using metrics like MAE and RMSE, which are not visible on this plot but are crucial for evaluating the model's predictive accuracy.
+
+
+To validate the model, compare the forecasted values against the actual values in the testing set. This comparison can be done using various error metrics:
+```{r}
+# Assuming 'testing_set' contains the actual future values for comparison
+actual_values <- testing_set
+
+# Extracting the point forecasts
+point_forecasts <- forecasted_values$mean
+
+# Calculating error metrics
+validation_errors <- actual_values - point_forecasts
+mae <- mean(abs(validation_errors)) # Mean Absolute Error
+
+# Print error metrics
+print(paste("MAE:", mae))
+
+```
+This code performs model validation by comparing the actual values from the test set with the forecasted values produced by an ARIMA model. The mean of the forecasted values, forecasted_values$mean, represents the model's predictions. The code calculates the Mean Absolute Error (MAE) by subtracting these forecasts from the actual observed values to obtain the forecasting errors, then taking the average of their absolute values. The resulting MAE of approximately 3.054 indicates that, on average, the model's predictions deviate from the true values by about 3.054 units. This metric provides a straightforward assessment of the model's accuracy, with its magnitude and acceptability dependent on the specific context of the data and the modeling objectives.
+
+
+
+
+
+
+
+
