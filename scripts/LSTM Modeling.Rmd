@@ -1,0 +1,144 @@
+---
+title: "LSTM modeling"
+author: "Matthew Lee"
+date: "2023-12-11"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, message = FALSE,
+                      warning = FALSE)
+```
+
+```{r}
+library(tidyverse)
+library(readr)
+library(lubridate)
+library(forecast)
+library(fda)
+library(ggplot2)
+library(keras)
+```
+
+We will now do time series analysis on our data using neural networks through the Keras library. We will specifically be using a LSTM model which will dive into in more detail later.
+
+# Importing Data
+We will first set a seed so we can reproduce the same results and read in our data which is in a csv file.
+```{r}
+set.seed(3722287)
+data <- read.csv("~/Documents/GitHub/vignette-tsforecasting/data/processed.csv", header = TRUE)
+colnames(data) <- c("Date", "Price")
+data <- data %>%
+  mutate(Date = mdy(Date)) %>%
+  arrange(Date)
+```
+After reading in our csv file we rename the column names for better readability and also sort the data in ascending order so we can convert our data into a time series.
+
+# Creating Time Series
+We will now convert our data into a time series object using the ts function and plot our time series.
+```{r}
+oil_price <- data$Price
+  
+oil_ts <- ts(data = oil_price, start = c(2000, 6), end = c(2023, 12), frequency = 52)
+
+plot(oil_ts)
+```
+
+# Data Preparation
+Now that we have our data as a time series object we will get ready to do our neural network modeling. First we define our window size for our model which will be 10 in this case. The window size is the amount of previous observations that our model will use to predict the next point. We will also split our time series into a training and testing group using the first 80% for training and the remaining 20% for testing.
+```{r}
+window_size <- 10
+train_size <- floor(length(oil_ts) * 0.8)  # 80% for training
+
+train_data <- oil_ts[1:train_size]
+test_data <- oil_ts[(train_size + 1):length(oil_ts)]
+
+train_dates <- time(oil_ts)[1:train_size]
+test_dates <- time(oil_ts)[(train_size + 1 + window_size):length(oil_ts)]
+```
+We also created lists of the dates for each group for plotting later on.
+
+# Sequence Creation
+LSTM models are powerful because we can train them using sequences instead of individual observations. For our model we will have sequences of length 10 (our window size). We will first create a function that will take take in our data values and window size and return a list containing a 3D array of the sequences and a numeric vector of our labels which are the values that each sequence is predicting.
+```{r}
+create_sequences <- function(data, window_size) {
+  sequences <- matrix(0, nrow = length(data) - window_size, ncol = window_size)
+  labels <- numeric(length(data) - window_size)
+  
+  for (i in 1:(length(data) - window_size)) {
+    sequences[i, ] <- data[i:(i + window_size - 1)]
+    labels[i] <- data[i + window_size]
+  }
+  
+  list(sequences = array(sequences, dim = c(length(data) - window_size, window_size, 1)), labels = labels)
+}
+```
+Now that we made our function, we will create sequences for our training data
+```{r}
+train_sequences <- create_sequences(train_data, window_size)
+train_sequences_array <- train_sequences$sequences
+train_labels <- train_sequences$labels
+```
+
+# Building LSTM Model
+We will now build a simple LSTM model to predict future gas prices.
+
+LSTMs are a type of recurrent neural network (RNN) that are good at learning from sequences of data and are particularly effective for time series forecasting because they can remember information over long periods, which is crucial for understanding trends and patterns in time series data.
+```{r}
+model <- keras_model_sequential() %>%
+  layer_lstm(units = 50, input_shape = c(window_size, 1)) %>%
+  layer_dense(units = 1)
+```
+Our model consists of an LSTM layer that processes the sequential data, followed by a dense layer for output.
+
+Now that we have created our model we will compile it using mean squared error as our loss function, nadam as our optimizer, and mean absolute error as our performance metric. We are using nadam instead of adam so we can adjust the learning rate of our model. For thsi model we are using a learning rate of 0.001.
+```{r}
+optimizer <- optimizer_nadam(learning_rate = 0.001)
+
+model %>% compile(
+  loss = 'mean_squared_error',
+  optimizer = optimizer,
+  metrics = c('mean_absolute_error')
+)
+
+summary(model)
+```
+Using summary we can see the layers in our model and the number of parameters in each!
+
+# Training Our Model
+Now that we have created our model we will train it on our training data.
+```{r}
+history <- model %>% fit(
+  x = train_sequences_array,
+  y = train_labels,
+  epochs = 50,
+  batch_size = 16,
+  validation_split = 0.2
+)
+
+plot(history)
+```
+Looking at our training data it looks like that our model converges to a mean absolute error of around 0.06
+
+# Evaluating Our Model
+Now that we have trained our model we will evaluate it on our testing set. We first create our test data sequences and then use the evaluate function to see how well our model did.
+```{r}
+test_sequences <- create_sequences(test_data, window_size)
+test_sequences_matrix <- test_sequences$sequences
+test_labels <- test_sequences$labels
+
+results <- model %>% evaluate(test_sequences_matrix, test_labels)
+```
+It seems that our model did slightly worse on our testing data with a mean absolute error of 0.08 but it still performs very well!
+
+We will now make predictions using our model and plot it over the actual data to visually see how our model performs.
+```{r}
+predictions <- model %>% predict(test_sequences_matrix)
+
+# Plot predictions against actual values
+plot(test_dates, test_labels, type = 'l', col = 'blue', ylab = 'Gasoline Prices', xlab = 'Year')
+lines(test_dates, predictions, col = 'red')
+legend('topleft', legend = c('Actual', 'Predicted'), col = c('blue', 'red'), lty = 1)
+```
+
+Looking at the plot it seems that our model actually performed very well and looks very similar to the actual testing data!
