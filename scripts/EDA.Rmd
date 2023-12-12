@@ -1,0 +1,80 @@
+---
+title: "Exploratory Data Analysis"
+author: "Sharon Lee"
+date: "2023-12-12"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+Before applying time series forecasting models such as LSTM and ARIMA model, we will explore and understand the patterns and characteristics of our weekly gasoline prices trends in California.
+
+```{r}
+setwd("/Users/seoeun/UCSB/PSTAT197/vignette-tsforecasting")
+library(tidyverse)
+
+gasoline <- read_csv("/Users/seoeun/Downloads/Weekly_California_All_Grades_All_Formulations_Retail_Gasoline_Prices.csv")
+head(gasoline)
+```
+First, we need to load the dataset. Since the dataset contains some unnecessary rows and is not formatted correctly, we will clean our dataset.
+
+```{r}
+gasoline <- gasoline[-c(1:4),]
+
+newcol <- strsplit(gasoline$`Weekly California All Grades All Formulations Retail Gasoline Prices`, ",")
+gasoline$Date <- sapply(newcol, function(x) x[1])
+gasoline$Price <- sapply(newcol, function(x) x[2])
+gasoline <- na.omit(gasoline) 
+
+gasoline <- gasoline %>% select(Date, Price)
+gasoline$Date <- as.Date(gasoline$Date, "%m/%d/%Y")
+gasoline$Price <- as.numeric(gasoline$Price)
+gasoline <- gasoline %>% arrange(Date)
+head(gasoline)
+```
+We remove the first four rows, and split each row containing date and price in single column into separate columns. Also, we need to ensure that Date is converted into "Date" format and rows are rearranged in chronological order.
+
+```{r}
+dim(gasoline) ## 1227 obs. and 2 variables (Date, Price)
+```
+The gasoline dataset contains weekly California retail gasoline price (in US Dollars per gallon) from May 29, 2000 to November 27, 2023. It has 1227 observations in total and 2 variables - Date and Price. 
+
+```{r}
+summary(gasoline$Price)
+```
+When we look at the summary of the dataset, we can see that the lowest price is 1.145 and the highest gasoline price was 6.364. The gasoline price on average is 3.206.
+
+```{r}
+gasoline %>% filter(Price==min(Price) | Price==max(Price))
+```
+Throughout the 23 years of gasoline price change, the lowest price of 1.145 was on Dec 31st, 2001, and the highest price of 6.364 was on Jun 13, 2022.
+
+
+Let's plot the overall dataset. The frequency will be 52 because the dataset is weekly collected.
+```{r}
+x <- ts(gasoline$Price, start=c(2000,5), end=c(2023,11), frequency=52)
+plot.ts(x, type="l", main="Weekly California Retail Gasoline Prices", ylab="Price",
+        col="blue") 
+grid(nx = NA, ny = NULL, lty = 2, col = "gray", lwd = 2)
+```
+
+From the plot, we can see that the overall price is increasing over time. Multiple fluctuations are found, but the price tends to drop once it hits the peak. It also doesn’t seem to have any clear seasonal pattern.
+
+In order to check for seasonality, stationarity, and a need of transformation, we will look at the auto-correlation function (ACF) and the partial auto-correlation (PACF). Thouse functions measure the average correlation between data points next to each other with different lags.
+```{r}
+par(mfrow=c(1,2))
+acf(x, main="ACF")
+pacf(x, main="PACF")
+```
+
+The ACF plot tends to decay slowly and constantly, while the PACF plot tends to drop off rapidly and there is a spike. Because of slowly decaying ACF and PACF ≈ 1 at lag 1, it is evident that we need to use a log-transformation and differencing for stationarity.
+
+
+
+
+
+
+
+
