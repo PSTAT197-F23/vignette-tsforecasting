@@ -4,17 +4,28 @@ author: 'Patrick Moon, Sharon Lee, Matthew Lee'
 date: December 13, 2023
 ---
 
+## Overview of the Vignette
+This vignette presents a comprehensive analysis of forecasting future gasoline prices in California using time series models. 
+
+The vignette starts with initial phase involves loading, cleaning, and organizing the dataset to ensure its suitability for detailed time series analysis. The EDA uncovers key trends and characteristics in the data, such as fluctuating price patterns without clear seasonal influences, setting the stage for more in-depth analysis.
+
+Throughout the study, two main time series forecasting models are employed: the Long Short-Term Memory (LSTM) model and the Autoregressive Integrated Moving Average (ARIMA) model. Each model is  built, trained, and evaluated, with a particular emphasis on their ability to accurately predict future gasoline prices.
+
+The LSTM model, a type of recurrent neural network, is tailored to capture complex patterns in the data, especially useful given the volatile nature of gasoline prices. The study not only constructs and trains the LSTM model but also evaluates its performance using Mean Absolute Error (MAE), revealing its remarkable predictive accuracy. On the other hand, the ARIMA model, a traditional approach in time series forecasting, undergoes a thorough assessment of stationarity, model fitting, and diagnostics. Despite its robustness in certain scenarios, the ARIMA model's performance, as indicated by a higher MAE, suggests limitations in capturing the dynamic nature of the gasoline price data.
+
+The concluding section of the vignette contrasts the performances of the LSTM and ARIMA models. It underscores the superior accuracy of LSTM in this context and discusses the implications of these findings. The study concludes with  reflections on the importance of choosing appropriate modeling techniques for time series analysis, especially in complex and evolving economic landscapes. Overall, this vignette serves as a valuable resource for understanding and applying advanced time series modeling techniques in practical scenarios.
+
 ## Data Description and EDA
 Before applying time series forecasting models such as LSTM and ARIMA model, we will explore and understand the patterns and characteristics of our weekly gasoline prices trends in California.
 
-We will load all the necessary packages.
+Firstly, we will load all the necessary packages.
 
-```{r}
+```{r, message=FALSE, warning=FALSE}
 library(tidyverse)
 library(readr)
 library(lubridate)
 library(forecast)
-library(fda)
+#library(fda)
 library(ggplot2)
 library(keras)
 library(dplyr)
@@ -22,43 +33,50 @@ library(tseries)
 library(tensorflow)
 ```
 
+Then, we need to load the dataset. Since the dataset contains some unnecessary rows and is not formatted correctly, we have already cleaned our dataset, and we will be using our processed data.
 
+# Importing Data
 ```{r}
-#setwd("/Users/gwonheum_moon/Desktop/PSTAT 197/vignette-tsforecasting/data")
-
+# Importing Data from the repository
 gasoline <- read_csv("data/processed.csv")
+
+# Checking the first 5 lines of the data
 head(gasoline)
 ```
-First, we need to load the dataset. Since the dataset contains some unnecessary rows and is not formatted correctly, we cleaned our dataset, and we will be using our processed data.
 
+Next, In this section, we're focused on ensuring our dataset is properly formatted for time series analysis. The key steps involve transforming the 'Date' column into a recognized date format and organizing the data chronologically.
 ```{r}
+# Setting the proper column names
 colnames(gasoline) <- c("Date", "Price")
-#gasoline <- gasoline %>% select(Date, Price)
+# Changing into date format
 gasoline$Date <- as.Date(gasoline$Date, "%m/%d/%Y")
 gasoline$Price <- as.numeric(gasoline$Price)
+# Arrange data in chronological order
 gasoline <- gasoline %>% arrange(Date)
+# Checking the first 5 lines of the organized data
 head(gasoline)
-tail(gasoline)
 ```
-We need to ensure that Date is converted into "Date" format and rows are rearranged in chronological order.
+Checking our first 5 lines of the data, we have confirmed that we have successfully changed the column names, and the data is in chronological order.
 
 ```{r}
+# Checking the dimensions of the data
 dim(gasoline) ## 1226 obs. and 2 variables (Date, Price)
 ```
-The gasoline dataset contains weekly California retail gasoline price (in US Dollars per gallon) from June 5, 2000 to November 27, 2023. It has 1226 observations in total and 2 variables - Date and Price. 
+The organized gasoline dataset contains weekly California retail gasoline price (in US Dollars per gallon) from June 5, 2000 to November 27, 2023. It has 1226 observations in total and 2 variables - Date and Price. 
 
 ```{r}
+# Getting basic information
 summary(gasoline$Price)
 ```
-When we look at the summary of the dataset, we can see that the lowest price is 1.146 and the highest gasoline price was 6.364. The gasoline price on average is 3.207.
+The summary of the dataset displays that the lowest price is 1.146 and the highest gasoline price was 6.364. The gasoline price on average is 3.207.
 
 ```{r}
+# Checking when the lowest and the highest price occured
 gasoline %>% filter(Price==min(Price) | Price==max(Price))
 ```
 Throughout the 23 years of gasoline price change, the lowest price of 1.146 was on Dec 31st, 2001, and the highest price of 6.364 was on Jun 13, 2022.
 
-
-Let's plot the overall dataset. The frequency will be 52 because the dataset is weekly collected.
+Let's plot the overall dataset. The frequency will be equal to 52 because the dataset is weekly collected.
 ```{r}
 x <- ts(gasoline$Price, start=c(2000,5), end=c(2023,11), frequency=52)
 plot.ts(x, type="l", main="Weekly California Retail Gasoline Prices", ylab="Price",
@@ -68,26 +86,29 @@ grid(nx = NA, ny = NULL, lty = 2, col = "gray", lwd = 2)
 
 From the plot, we can see that the overall price is increasing over time. Multiple fluctuations are found, but the price tends to drop once it hits the peak. It also does not seem to have any clear seasonal pattern.
 
-## LSTM
+From our exploratory data analysis (EDA), we've successfully loaded and preprocessed the weekly gasoline prices dataset, ensuring a foundation for accurate and insightful analysis. Our dataset, spanning from June 5, 2000, to November 27, 2023, consists of 1226 observations, capturing the dynamic nature of California's retail gasoline prices. After meticulously cleaning and structuring the data, we confirmed that the 'Date' and 'Price' columns are appropriately formatted for time series analysis. Our preliminary observations reveal a fluctuating yet overall increasing trend in gasoline prices over the past 23 years. Notably, the data reflect significant peaks and troughs, with the highest recorded price on June 13, 2022, and the lowest on December 31, 2001. The absence of a clear seasonal pattern in the plotted data suggests complex underlying factors influencing these price changes. Having established these foundational insights through our EDA, we are now poised to delve into more sophisticated time series forecasting models such as LSTM and ARIMA, aiming to unravel deeper patterns and predict future price trends with greater accuracy.
+
+
+## Time Series Analysis With Neural Net Architecture
 We will now do time series analysis on our data using neural networks through the Keras library. We will specifically be using a LSTM model which will dive into in more detail later.
 
 # Creating Time Series
-We will now convert our data into a time series object using the ts function and plot our time series.
+We will now convert our data into a time series object using the ts function.
 ```{r}
 oil_price <- gasoline$Price
-  
+# Converting the data into time series object
 oil_ts <- ts(data = oil_price, start = c(2000, 6), end = c(2023, 12), frequency = 52)
-
-plot(oil_ts)
 ```
 
 # Data Preparation
-Now that we have our data as a time series object we will get ready to do our neural network modeling. First we define our window size for our model which will be 10 in this case. The window size is the amount of previous observations that our model will use to predict the next point. We will also split our time series into a training and testing group using the first 80% for training and the remaining 20% for testing.
+Now that we have our data as a time series object we will get ready to do our neural network modeling. First we define our window size for our model which will be 10 in this case. The window size is the amount of previous observations that our model will use to predict the next point. We will also split our time series into a training and testing group using the first 80% for training and the remaining 20% for testing for validating the model's performance on unseen data.
 
 ```{r}
+# Setting the sequences to length of 10
 window_size <- 10
 train_size <- floor(length(oil_ts) * 0.8)  # 80% for training
 
+# Partitioning into training and testing dataset
 train_data <- oil_ts[1:train_size]
 test_data <- oil_ts[(train_size + 1):length(oil_ts)]
 
@@ -97,10 +118,11 @@ test_dates <- time(oil_ts)[(train_size + 1 + window_size):length(oil_ts)]
 
 We also created lists of the dates for each group for plotting later on.
 
-## Sequence Creation
+# Sequence Creation
 LSTM models are powerful because we can train them using sequences instead of individual observations. For our model we will have sequences of length 10 (our window size). We will first create a function that will take take in our data values and window size and return a list containing a 3D array of the sequences and a numeric vector of our labels which are the values that each sequence is predicting.
 
 ```{r}
+# Creating a function to return a list containing a 3D array of the sequences
 create_sequences <- function(data, window_size) {
   sequences <- matrix(0, nrow = length(data) - window_size, ncol = window_size)
   labels <- numeric(length(data) - window_size)
@@ -117,6 +139,7 @@ create_sequences <- function(data, window_size) {
 Now that we made our function, we will create sequences for our training data.
 
 ```{r}
+# Creating sequences for the training data
 train_sequences <- create_sequences(train_data, window_size)
 train_sequences_array <- train_sequences$sequences
 train_labels <- train_sequences$labels
@@ -128,6 +151,7 @@ We will now build a simple LSTM model to predict future gas prices.
 LSTMs are a type of recurrent neural network (RNN) that are good at learning from sequences of data and are particularly effective for time series forecasting because they can remember information over long periods, which is crucial for understanding trends and patterns in time series data.
 
 ```{r}
+# Building LSTM model
 model <- keras_model_sequential() %>%
   layer_lstm(units = 50, input_shape = c(window_size, 1)) %>%
   layer_dense(units = 1)
@@ -135,24 +159,28 @@ model <- keras_model_sequential() %>%
 
 Our model consists of an LSTM layer that processes the sequential data, followed by a dense layer for output.
 
-Now that we have created our model we will compile it using mean squared error as our loss function, nadam as our optimizer, and mean absolute error as our performance metric. We are using nadam instead of adam so we can adjust the learning rate of our model. For this model we are using a learning rate of 0.001.
+Now that we have created our model we will compile it using mean squared error as our loss function, nadam as our optimizer, and mean absolute error as our performance metric. The mean absolute error (MAE) serves as a straightforward, interpretable measure of the model's accuracy. A lower MAE indicates better model performance, suggesting that the model's predictions are closer to the actual values. In the context of forecasting gasoline prices, a low MAE is essential, as it implies the model's predictions are reliable and can be trusted for practical applications, like economic planning or budget forecasting. Comparing the MAE of our LSTM model with that of the ARIMA model will help establish the relative effectiveness of these approaches in capturing and predicting the trends in gasoline prices.
+
+We are using nadam instead of adam so we can adjust the learning rate of our model. For this model we are using a learning rate of 0.001.
 
 ```{r}
+# Setting the learning rate of 0.001
 optimizer <- optimizer_nadam(learning_rate = 0.001)
-
+# Using MAE as performance metric
 model %>% compile(
   loss = 'mean_squared_error',
   optimizer = optimizer,
   metrics = c('mean_absolute_error')
 )
-
+# Printing the summary
 summary(model)
 ```
-Using summary we can see the layers in our model and the number of parameters in each!
+Using summary we can see the layers in our model and the number of parameters in each.
 
 # Training Our Model
 Now that we have created our model we will train it on our training data.
-```{r}
+```{r, echo=TRUE, results='hide'}
+# Training the Model
 history <- model %>% fit(
   x = train_sequences_array,
   y = train_labels,
@@ -163,20 +191,23 @@ history <- model %>% fit(
 
 plot(history)
 ```
-Looking at our training data it looks like that our model converges to a mean absolute error of around 0.06
+With the training data, our model converges to a mean absolute error of around 0.06
 
-# Evaluating Our Model
+# Evaluating the Model
 Now that we have trained our model we will evaluate it on our testing set. We first create our test data sequences and then use the evaluate function to see how well our model did.
 ```{r}
+# Creating test data sequences
 test_sequences <- create_sequences(test_data, window_size)
 test_sequences_matrix <- test_sequences$sequences
 test_labels <- test_sequences$labels
 
+# Evaluating function
 results <- model %>% evaluate(test_sequences_matrix, test_labels)
 ```
 It seems that our model did slightly worse on our testing data with a mean absolute error of 0.08 but it still performs very well. Also, we will be comparing this mean absolute error with our ARIMA model forecast in the future.
 
-We will now make predictions using our model and plot it over the actual data to visually see how our model performs.
+# Predictions
+We will now make predictions using our model and plot it over the actual data to visually see how our model performs. This step not only validates the model's performance but also offers a visual representation of how closely the model's predictions align with real-world data, providing an intuitive understanding of its effectiveness.
 
 ```{r}
 predictions <- model %>% predict(test_sequences_matrix)
@@ -187,7 +218,7 @@ lines(test_dates, predictions, col = 'red')
 legend('topleft', legend = c('Actual', 'Predicted'), col = c('blue', 'red'), lty = 1)
 ```
 
-Looking at the plot it seems that our model actually performed very well and looks very similar to the actual testing data.
+Looking at the plot it seems that our model actually performed successfully and looks very similar to the actual testing data. Additionally, since we cannot precisely evaluate the model with its graph, we are going to be comparing the results with our performance metric, mean absolute error, with the ARIMA Model as well.
 
 ## ARIMA Modeling
 
@@ -201,14 +232,16 @@ There are two main types of non-stationarity:
 Difference Stationarity: Where the series becomes stationary after differencing, i.e., subtracting the current value from the previous value.
 2. The Augmented Dickey-Fuller (ADF) test, which we perform in our analysis, specifically tests for difference stationarity.
 
+# Checking Stationarity with ADF Test
 With this understanding, we perform the Augmented Dickey-Fuller (ADF) test to check whether our time series data (the gasoline prices) is stationary. This test evaluates the null hypothesis that the time series can be represented by a unit root, indicating it is non-stationary. Essentially, if the test finds strong evidence of a unit root, the time series is likely non-stationary, and vice versa.
 ```{r}
+# Performing ADF Test
 adf_test_result <- adf.test(oil_ts, alternative = "stationary")
 print(adf_test_result)
 ```
-In this output, the Dickey-Fuller statistic is -3.4466, and the p-value is 0.04743. The p-value is crucial for our decision-making: a low p-value (typically < 0.05) implies that the null hypothesis of non-stationarity can be rejected. Therefore, in our case, with a p-value of 0.04743, we conclude that the time series is stationary. This means that our time series does not have unit root characteristics and is suitable for ARIMA modeling.
+In this output, the Dickey-Fuller statistic is -3.4331, and the p-value is 0.04873 The p-value is crucial for our decision-making: a low p-value (typically < 0.05) implies that the null hypothesis of non-stationarity can be rejected. Therefore, in our case, with a p-value of 0.04743, we conclude that the time series is stationary. This means that our time series does not have unit root characteristics and is suitable for ARIMA modeling.
 
-
+# Data Partitioning
 Before modeling, we split our data to avoid lookahead bias:
 ```{r}
 # Determining the split point for training and testing sets
@@ -221,6 +254,7 @@ testing_set <- oil_ts[(split_point + 1):length(oil_ts)]
 ```
 This division allows us to evaluate our model on unseen data.
 
+# Data Transformation
 Before moving on to building the model, we can clearly observe the big variance shown in the graph:
 ```{r}
 # Plotting the time series data
@@ -234,6 +268,7 @@ ggplot(gasoline, aes(x = Date, y = Price)) +
 
 To address non-stationarity aspects like high variance, we apply log transformation:
 ```{r}
+# Log-transformation
 logdata <- log(training_set)
 ```
 
@@ -242,11 +277,13 @@ logdata <- log(training_set)
 # Plot the logtrain data
 ts.plot(logdata, main = "Plot of Log Transformed Training Set",
         ylab = "Log(Price per Gallon)", xlab = "Time")
+# Comparing Variances
 var(oil_ts)
 var(logdata)
 ```
 The results show a significant reduction in variance, indicating our transformations were effective.
 
+# Model Selection
 After preparing our data and ensuring it is suitable for time series analysis, we proceed to model selection. The choice of the appropriate ARIMA model is crucial to accurately capturing the underlying patterns in our time series data.
 
 We use the auto.arima function from the forecast package to automatically determine the best fitting ARIMA model. The auto.arima function explores various combinations of AR (autoregressive), I (integrated), and MA (moving average) components to identify the model that best fits our data. It does so by minimizing the AIC (Akaike Information Criterion), a measure that balances the model's fit against its complexity.
@@ -258,22 +295,24 @@ summary(optimal_arima_model)
 ```
 From the summary above, this model, ARIMA(3,1,2), suggests a somewhat complex dynamic in the data, with three autoregressive terms, one level of differencing, and two moving average terms. The coefficients of the model and their standard errors provide insights into the significance and impact of each term in the model. Lower AIC and BIC values indicate a better model fit, taking into account the number of parameters.
 
-# Model Diagnostics
+# Model Diagnostics Checking
 After fitting the ARIMA model, we analyze its residuals to assess the adequacy of the model.
 The plots of residuals, their ACF, and PACF, along with the histogram and Q-Q plot, are crucial for understanding whether the residuals behave like white noise, which is a key assumption in ARIMA modeling. The histogram and Q-Q plot assess the normality of the residuals.
 ```{r}
-# Fit the ARIMA(3,1,2) model to the log-trasformed data
+# Fit the ARIMA(3,1,2) model to the log-transformed data
 fit_arima <- Arima(logdata, order = c(3,1,2))
 
+# Setting up the layout
+par(mfrow = c(2, 3))
 # Check the residuals
 residuals <- residuals(fit_arima)
-
 plot(residuals, main = "Residuals of ARIMA(3,1,2) Model")
-acf(residuals, main = "ACF of Residuals")
-pacf(residuals, main = "PACF of Residuals")
 hist(residuals, main = "Histogram of Residuals", xlab = "Residuals", breaks = 30)
 qqnorm(residuals); qqline(residuals)
+acf(residuals, main = "ACF of Residuals")
+pacf(residuals, main = "PACF of Residuals")
 ```
+Looking at the plots above, the residuals plot displays no trend and seasonality. However, there is still some spikes that shows visible change of variance. The histogram of residuals seems normal, but the Q-Q Plot does not seem straight enough. Additionally, for the ACF and PACF plot of residuals, most of the lags are inside of the confidence interval as well, but there are still some lags outside of the confidence interval which requires further investigation with statistical tests. 
 
 Finally, we conduct statistical tests to further assess the residuals:
 ```{r}
@@ -281,7 +320,7 @@ Finally, we conduct statistical tests to further assess the residuals:
 shapiro_test <- shapiro.test(residuals)
 print(shapiro_test)
 
-
+# Ljung-Box test
 ljung_box_test <- Box.test(residuals, lag = 12, type = "Ljung-Box", fitdf = 5)
 print(ljung_box_test)
 
@@ -293,14 +332,15 @@ print(ljung_box_test_squared)
 ```
 Shapiro-Wilk Normality Test: This test checks the normality of the residuals. The result (W = 0.87765, p-value < 2.2e-16) suggests a significant deviation from normality. This might indicate that the model fails to capture some aspect of the data's behavior, a common challenge in economic time series influenced by complex, non-linear factors.
 
-Box-Ljung Test on Residuals: This test assesses autocorrelation in the residuals. The result (X-squared = 20.325, df = 7, p-value = 0.004909) implies significant autocorrelation, suggesting that the model might not be capturing all the temporal dependencies in the data.
+Box-Ljung Test on Residuals: This test assesses autocorrelation in the residuals. The result (X-squared = 20.325, df = 7 (p+q value from ARIMA(p,d,q), so 4+3), p-value = 0.004909) implies significant autocorrelation, suggesting that the model might not be capturing all the temporal dependencies in the data.
 
-Box-Ljung Test on Squared Residuals: This test checks for autocorrelation in squared residuals, indicating ARCH effects. The result (X-squared = 126.84, df = 7, p-value < 2.2e-16) points to the presence of time-varying volatility, a common feature in financial data but difficult to model with standard ARIMA.
+Box-Ljung Test on Squared Residuals: This test checks for autocorrelation in squared residuals, indicating ARCH effects. The result (X-squared = 126.84, df = 7 (p+q value from ARIMA(p,d,q), so 4+3), p-value < 2.2e-16) points to the presence of time-varying volatility, a common feature in financial data but difficult to model with standard ARIMA.
 
 The results of the diagnostic tests reveal some limitations of the ARIMA(3,1,2) model in fully capturing the dynamics of the gasoline price data. The complex nature of economic time series, often driven by human behavior and external factors, poses challenges to linear modeling approaches like ARIMA. Future explorations might involve more sophisticated models, including those that can handle non-linearity and volatility, such as GARCH models, or the use of machine learning techniques for more robust forecasting in the face of such complex data.
 
 
-
+# Forecasting with ARIMA
+Now, we are going to perform forecasting using the ARIMA(3,1,2) model. 
 ```{r}
 # Forecasting future values using the fitted ARIMA model
 h <- length(testing_set)  # Number of periods to forecast should match the length of testing_set
@@ -334,7 +374,11 @@ This code performs model validation by comparing the actual values from the test
 This MAE value is very high compared to the LSTM model's forecast, and we will compare this result in the conclusion.
 
 ## Conclusion
-# MAE Comparison
-After running both the ARIMA and LSTM models, the LSTM model performed far better than the ARIMA model. On our testing data, the ARIMA model has a mean absolute error(MAE) of 2.962 while the LSTM model had an MAE of about 0.08. For gas prices, a low MAE is important because the error amount adds for each gallon of gas you get.
+In our study on forecasting gasoline prices in California, we employed two distinct modeling techniques: Long Short-Term Memory (LSTM) and Autoregressive Integrated Moving Average (ARIMA). The contrast in their performance, as highlighted by the Mean Absolute Error (MAE) values, provides revelations into their predictive capabilities. The LSTM model demonstrated remarkable proficiency, evidenced by its significantly lower MAE of 0.08, compared to the ARIMA model's MAE of 2.962. This superior performance of LSTM can be attributed to its advanced ability to capture complex, non-linear relationships inherent in the data, a crucial aspect considering the fluctuating nature of gasoline prices driven by various external factors. Unlike ARIMA, which requires stationarity in the dataset, LSTM's architecture allows it to adeptly handle non-stationary data, making it more suitable for volatile economic time series.
+
+Furthermore, the flexibility and robustness of LSTM models stand out, especially in dealing with datasets characterized by high volatility, such as commodity prices. This aspect is crucial for practical applications, where accurate forecasts hold immense value for budget planning and economic strategy formulation by consumers, businesses, and policymakers. On the other hand, the higher MAE in the ARIMA model suggests potential limitations in capturing the intricate dynamics of gasoline prices, likely due to its linear nature. This outcome opens avenues for future research, possibly exploring the integration of external variables into the LSTM model or experimenting with hybrid models that blend the strengths of both ARIMA and LSTM.
+
+This study's findings not only presents on the behavior of gasoline prices in California but also emphasize the importance of selecting the most appropriate modeling technique based on the data characteristics and forecasting objectives. The remarkable performance of the LSTM model in this context underscores its utility as a potent tool for time series forecasting in complex scenarios, offering a benchmark for future research and applications in similar fields. Ultimately, our analysis serves as a testament to the evolving landscape of time series modeling, highlighting the need for innovative approaches for the dynamic and complex datasets in the real world.
+
 
 
