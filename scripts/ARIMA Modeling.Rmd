@@ -88,10 +88,10 @@ logdata <- log(training_set)
 
 ```{r}
 # Plot the logtrain data
-ts.plot(diff_log_data, main = "Plot of Log Transformed Training Set",
+ts.plot(logdata, main = "Plot of Log Transformed Training Set",
         ylab = "Log(Price per Gallon)", xlab = "Time")
 var(ts_data)
-var(diff_log_data)
+var(logdata)
 ```
 The results show a significant reduction in variance, indicating our transformations were effective.
 
