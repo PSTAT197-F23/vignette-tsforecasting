@@ -68,7 +68,7 @@ grid(nx = NA, ny = NULL, lty = 2, col = "gray", lwd = 2)
 
 From the plot, we can see that the overall price is increasing over time. Multiple fluctuations are found, but the price tends to drop once it hits the peak. It also does not seem to have any clear seasonal pattern.
 
-## LSTM
+## Neural Net Architecture
 We will now do time series analysis on our data using neural networks through the Keras library. We will specifically be using a LSTM model which will dive into in more detail later.
 
 # Creating Time Series
