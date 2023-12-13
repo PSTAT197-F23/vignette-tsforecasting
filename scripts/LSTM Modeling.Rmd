@@ -25,7 +25,6 @@ We will now do time series analysis on our data using neural networks through th
 # Importing Data
 We will first set a seed so we can reproduce the same results and read in our data which is in a csv file.
 ```{r}
-set.seed(3722287)
 data <- read.csv("~/Documents/GitHub/vignette-tsforecasting/data/processed.csv", header = TRUE)
 colnames(data) <- c("Date", "Price")
 data <- data %>%
@@ -108,6 +107,7 @@ Using summary we can see the layers in our model and the number of parameters in
 # Training Our Model
 Now that we have created our model we will train it on our training data.
 ```{r}
+set.seed(3722287)
 history <- model %>% fit(
   x = train_sequences_array,
   y = train_labels,

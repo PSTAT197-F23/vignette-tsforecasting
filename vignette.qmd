@@ -104,7 +104,6 @@ Now that we have our data as a time series object we will get ready to do our ne
 
 ```{r}
 # Setting the sequences to length of 10
-set.seed(3722287)
 window_size <- 10
 train_size <- floor(length(oil_ts) * 0.8)  # 80% for training
 
@@ -181,6 +180,7 @@ Using summary we can see the layers in our model and the number of parameters in
 Now that we have created our model we will train it on our training data.
 ```{r, echo=TRUE, results='hide'}
 # Training the Model
+set.seed(3722287)
 history <- model %>% fit(
   x = train_sequences_array,
   y = train_labels,
