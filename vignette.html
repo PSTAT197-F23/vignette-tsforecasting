@@ -358,7 +358,7 @@ ________________________________________________________________________________
 <span id="cb23-6"><a href="#cb23-6" aria-hidden="true" tabindex="-1"></a><span class="co"># Evaluating function</span></span>
 <span id="cb23-7"><a href="#cb23-7" aria-hidden="true" tabindex="-1"></a>results <span class="ot">&lt;-</span> model <span class="sc">%&gt;%</span> <span class="fu">evaluate</span>(test_sequences_matrix, test_labels)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <div class="cell-output cell-output-stdout">
-<pre><code>8/8 - 0s - loss: 0.0220 - mean_absolute_error: 0.0838 - 52ms/epoch - 7ms/step</code></pre>
+<pre><code>8/8 - 0s - loss: 0.0275 - mean_absolute_error: 0.1000 - 65ms/epoch - 8ms/step</code></pre>
 </div>
 </div>
 <p>It seems that our model did slightly worse on our testing data with a mean absolute error of 0.08 but it still performs very well. Also, we will be comparing this mean absolute error with our ARIMA model forecast in the future.</p>
@@ -369,7 +369,7 @@ ________________________________________________________________________________
 <div class="cell">
 <div class="sourceCode cell-code" id="cb25"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb25-1"><a href="#cb25-1" aria-hidden="true" tabindex="-1"></a>predictions <span class="ot">&lt;-</span> model <span class="sc">%&gt;%</span> <span class="fu">predict</span>(test_sequences_matrix)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <div class="cell-output cell-output-stdout">
-<pre><code>8/8 - 1s - 1s/epoch - 130ms/step</code></pre>
+<pre><code>8/8 - 1s - 978ms/epoch - 122ms/step</code></pre>
 </div>
 <div class="sourceCode cell-code" id="cb27"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb27-1"><a href="#cb27-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Plot predictions against actual values</span></span>
 <span id="cb27-2"><a href="#cb27-2" aria-hidden="true" tabindex="-1"></a><span class="fu">plot</span>(test_dates, test_labels, <span class="at">type =</span> <span class="st">'l'</span>, <span class="at">main=</span><span class="st">"LSTM Forecasting: Future Gasoline Prices"</span>, <span class="at">col =</span> <span class="st">'blue'</span>, <span class="at">ylab =</span> <span class="st">'Gasoline Prices'</span>, <span class="at">xlab =</span> <span class="st">'Year'</span>)</span>
@@ -407,7 +407,7 @@ Dickey-Fuller = -3.4331, Lag order = 10, p-value = 0.04873
 alternative hypothesis: stationary</code></pre>
 </div>
 </div>
-<p>In this output, the Dickey-Fuller statistic is -3.4331, and the p-value is 0.04873 The p-value is crucial for our decision-making: a low p-value (typically &lt; 0.05) implies that the null hypothesis of non-stationarity can be rejected. Therefore, in our case, with a p-value of 0.04743, we conclude that the time series is stationary. This means that our time series does not have unit root characteristics and is suitable for ARIMA modeling.</p>
+<p>In this output, the Dickey-Fuller statistic is -3.4331, and the p-value is 0.04873 The p-value is crucial for our decision-making: a low p-value (typically &lt; 0.05) implies that the null hypothesis of non-stationarity can be rejected. Therefore, in our case, with a p-value of 0.04873, we conclude that the time series is stationary. This means that our time series does not have unit root characteristics and is suitable for ARIMA modeling.</p>
 </section>
 <section id="data-partitioning" class="level1">
 <h1>Data Partitioning</h1>

@@ -239,7 +239,7 @@ With this understanding, we perform the Augmented Dickey-Fuller (ADF) test to ch
 adf_test_result <- adf.test(oil_ts, alternative = "stationary")
 print(adf_test_result)
 ```
-In this output, the Dickey-Fuller statistic is -3.4331, and the p-value is 0.04873 The p-value is crucial for our decision-making: a low p-value (typically < 0.05) implies that the null hypothesis of non-stationarity can be rejected. Therefore, in our case, with a p-value of 0.04743, we conclude that the time series is stationary. This means that our time series does not have unit root characteristics and is suitable for ARIMA modeling.
+In this output, the Dickey-Fuller statistic is -3.4331, and the p-value is 0.04873 The p-value is crucial for our decision-making: a low p-value (typically < 0.05) implies that the null hypothesis of non-stationarity can be rejected. Therefore, in our case, with a p-value of 0.04873, we conclude that the time series is stationary. This means that our time series does not have unit root characteristics and is suitable for ARIMA modeling.
 
 # Data Partitioning
 Before modeling, we split our data to avoid lookahead bias:
