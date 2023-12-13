@@ -7,7 +7,7 @@ date: December 13, 2023
 ## Overview of the Vignette
 This vignette presents a comprehensive analysis of forecasting future gasoline prices in California using time series models. 
 
-The vignette starts with initial phase involves loading, cleaning, and organizing the dataset to ensure its suitability for detailed time series analysis. The EDA uncovers key trends and characteristics in the data, such as fluctuating price patterns without clear seasonal influences, setting the stage for more in-depth analysis.
+The vignette starts with a initial phase involving loading, cleaning, and organizing the dataset to ensure its suitability for detailed time series analysis. The EDA uncovers key trends and characteristics in the data, such as fluctuating price patterns without clear seasonal influences, setting the stage for more in-depth analysis.
 
 Throughout the study, two main time series forecasting models are employed: the Long Short-Term Memory (LSTM) model and the Autoregressive Integrated Moving Average (ARIMA) model. Each model is  built, trained, and evaluated, with a particular emphasis on their ability to accurately predict future gasoline prices.
 
@@ -25,7 +25,6 @@ library(tidyverse)
 library(readr)
 library(lubridate)
 library(forecast)
-#library(fda)
 library(ggplot2)
 library(keras)
 library(dplyr)
@@ -76,7 +75,7 @@ gasoline %>% filter(Price==min(Price) | Price==max(Price))
 ```
 Throughout the 23 years of gasoline price change, the lowest price of 1.146 was on Dec 31st, 2001, and the highest price of 6.364 was on Jun 13, 2022.
 
-Let's plot the overall dataset. The frequency will be equal to 52 because the dataset is weekly collected.
+Let's plot the overall dataset. The frequency will be equal to 52 because the data was collected weekly.
 ```{r}
 x <- ts(gasoline$Price, start=c(2000,5), end=c(2023,11), frequency=52)
 plot.ts(x, type="l", main="Weekly California Retail Gasoline Prices", ylab="Price",
@@ -105,6 +104,7 @@ Now that we have our data as a time series object we will get ready to do our ne
 
 ```{r}
 # Setting the sequences to length of 10
+set.seed(3722287)
 window_size <- 10
 train_size <- floor(length(oil_ts) * 0.8)  # 80% for training
 
