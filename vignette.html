@@ -1,0 +1,962 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en"><head>
+
+<meta charset="utf-8">
+<meta name="generator" content="quarto-1.3.353">
+
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+
+<meta name="author" content="Patrick Moon, Sharon Lee, Matthew Lee">
+<meta name="dcterms.date" content="2023-12-13">
+
+<title>Vignette: Time Series Forecasting: Forecasting Future Gasoline Prices in California</title>
+<style>
+code{white-space: pre-wrap;}
+span.smallcaps{font-variant: small-caps;}
+div.columns{display: flex; gap: min(4vw, 1.5em);}
+div.column{flex: auto; overflow-x: auto;}
+div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+ul.task-list{list-style: none;}
+ul.task-list li input[type="checkbox"] {
+  width: 0.8em;
+  margin: 0 0.8em 0.2em -1em; /* quarto-specific, see https://github.com/quarto-dev/quarto-cli/issues/4556 */ 
+  vertical-align: middle;
+}
+/* CSS for syntax highlighting */
+pre > code.sourceCode { white-space: pre; position: relative; }
+pre > code.sourceCode > span { display: inline-block; line-height: 1.25; }
+pre > code.sourceCode > span:empty { height: 1.2em; }
+.sourceCode { overflow: visible; }
+code.sourceCode > span { color: inherit; text-decoration: inherit; }
+div.sourceCode { margin: 1em 0; }
+pre.sourceCode { margin: 0; }
+@media screen {
+div.sourceCode { overflow: auto; }
+}
+@media print {
+pre > code.sourceCode { white-space: pre-wrap; }
+pre > code.sourceCode > span { text-indent: -5em; padding-left: 5em; }
+}
+pre.numberSource code
+  { counter-reset: source-line 0; }
+pre.numberSource code > span
+  { position: relative; left: -4em; counter-increment: source-line; }
+pre.numberSource code > span > a:first-child::before
+  { content: counter(source-line);
+    position: relative; left: -1em; text-align: right; vertical-align: baseline;
+    border: none; display: inline-block;
+    -webkit-touch-callout: none; -webkit-user-select: none;
+    -khtml-user-select: none; -moz-user-select: none;
+    -ms-user-select: none; user-select: none;
+    padding: 0 4px; width: 4em;
+  }
+pre.numberSource { margin-left: 3em;  padding-left: 4px; }
+div.sourceCode
+  {   }
+@media screen {
+pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
+}
+</style>
+
+
+<script src="vignette_files/libs/clipboard/clipboard.min.js"></script>
+<script src="vignette_files/libs/quarto-html/quarto.js"></script>
+<script src="vignette_files/libs/quarto-html/popper.min.js"></script>
+<script src="vignette_files/libs/quarto-html/tippy.umd.min.js"></script>
+<script src="vignette_files/libs/quarto-html/anchor.min.js"></script>
+<link href="vignette_files/libs/quarto-html/tippy.css" rel="stylesheet">
+<link href="vignette_files/libs/quarto-html/quarto-syntax-highlighting.css" rel="stylesheet" id="quarto-text-highlighting-styles">
+<script src="vignette_files/libs/bootstrap/bootstrap.min.js"></script>
+<link href="vignette_files/libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
+<link href="vignette_files/libs/bootstrap/bootstrap.min.css" rel="stylesheet" id="quarto-bootstrap" data-mode="light">
+
+
+</head>
+
+<body class="fullcontent">
+
+<div id="quarto-content" class="page-columns page-rows-contents page-layout-article">
+
+<main class="content" id="quarto-document-content">
+
+<header id="title-block-header" class="quarto-title-block default">
+<div class="quarto-title">
+<h1 class="title">Vignette: Time Series Forecasting: Forecasting Future Gasoline Prices in California</h1>
+</div>
+
+
+
+<div class="quarto-title-meta">
+
+    <div>
+    <div class="quarto-title-meta-heading">Author</div>
+    <div class="quarto-title-meta-contents">
+             <p>Patrick Moon, Sharon Lee, Matthew Lee </p>
+          </div>
+  </div>
+    
+    <div>
+    <div class="quarto-title-meta-heading">Published</div>
+    <div class="quarto-title-meta-contents">
+      <p class="date">December 13, 2023</p>
+    </div>
+  </div>
+  
+    
+  </div>
+  
+
+</header>
+
+<section id="data-description-and-eda" class="level2">
+<h2 class="anchored" data-anchor-id="data-description-and-eda">Data Description and EDA</h2>
+<p>Before applying time series forecasting models such as LSTM and ARIMA model, we will explore and understand the patterns and characteristics of our weekly gasoline prices trends in California.</p>
+<p>We will load all the necessary packages.</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb1"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(tidyverse)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stderr">
+<pre><code>── Attaching core tidyverse packages ──────────────────────── tidyverse 2.0.0 ──
+✔ dplyr     1.1.4     ✔ readr     2.1.4
+✔ forcats   1.0.0     ✔ stringr   1.5.1
+✔ ggplot2   3.4.4     ✔ tibble    3.2.1
+✔ lubridate 1.9.3     ✔ tidyr     1.3.0
+✔ purrr     1.0.2     
+── Conflicts ────────────────────────────────────────── tidyverse_conflicts() ──
+✖ dplyr::filter() masks stats::filter()
+✖ dplyr::lag()    masks stats::lag()
+ℹ Use the conflicted package (&lt;http://conflicted.r-lib.org/&gt;) to force all conflicts to become errors</code></pre>
+</div>
+<div class="sourceCode cell-code" id="cb3"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(readr)</span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(lubridate)</span>
+<span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(forecast)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stderr">
+<pre><code>Registered S3 method overwritten by 'quantmod':
+  method            from
+  as.zoo.data.frame zoo </code></pre>
+</div>
+<div class="sourceCode cell-code" id="cb5"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(fda)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stderr">
+<pre><code>Loading required package: splines
+Loading required package: fds
+Loading required package: rainbow
+Loading required package: MASS
+
+Attaching package: 'MASS'
+
+The following object is masked from 'package:dplyr':
+
+    select
+
+Loading required package: pcaPP
+Loading required package: RCurl
+
+Attaching package: 'RCurl'
+
+The following object is masked from 'package:tidyr':
+
+    complete
+
+Loading required package: deSolve
+
+Attaching package: 'fda'
+
+The following object is masked from 'package:forecast':
+
+    fourier
+
+The following object is masked from 'package:graphics':
+
+    matplot</code></pre>
+</div>
+<div class="sourceCode cell-code" id="cb7"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(ggplot2)</span>
+<span id="cb7-2"><a href="#cb7-2" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(keras)</span>
+<span id="cb7-3"><a href="#cb7-3" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(dplyr)</span>
+<span id="cb7-4"><a href="#cb7-4" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(tseries)</span>
+<span id="cb7-5"><a href="#cb7-5" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(tensorflow)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb8"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a><span class="co">#setwd("/Users/gwonheum_moon/Desktop/PSTAT 197/vignette-tsforecasting/data")</span></span>
+<span id="cb8-2"><a href="#cb8-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb8-3"><a href="#cb8-3" aria-hidden="true" tabindex="-1"></a>gasoline <span class="ot">&lt;-</span> <span class="fu">read_csv</span>(<span class="st">"data/processed.csv"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stderr">
+<pre><code>Rows: 1226 Columns: 2
+── Column specification ────────────────────────────────────────────────────────
+Delimiter: ","
+chr (1): Week of
+dbl (1): Weekly California All Grades All Formulations Retail Gasoline Price...
+
+ℹ Use `spec()` to retrieve the full column specification for this data.
+ℹ Specify the column types or set `show_col_types = FALSE` to quiet this message.</code></pre>
+</div>
+<div class="sourceCode cell-code" id="cb10"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb10-1"><a href="#cb10-1" aria-hidden="true" tabindex="-1"></a><span class="fu">head</span>(gasoline)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code># A tibble: 6 × 2
+  `Week of`  Weekly California All Grades All Formulations Retail Gasoline Pri…¹
+  &lt;chr&gt;                                                                    &lt;dbl&gt;
+1 11/27/2023                                                                4.82
+2 11/20/2023                                                                4.88
+3 11/13/2023                                                                4.98
+4 11/6/2023                                                                 5.06
+5 10/30/2023                                                                5.18
+6 10/23/2023                                                                5.33
+# ℹ abbreviated name:
+#   ¹​`Weekly California All Grades All Formulations Retail Gasoline Prices Dollars per Gallon`</code></pre>
+</div>
+</div>
+<p>First, we need to load the dataset. Since the dataset contains some unnecessary rows and is not formatted correctly, we cleaned our dataset, and we will be using our processed data.</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb12"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb12-1"><a href="#cb12-1" aria-hidden="true" tabindex="-1"></a><span class="fu">colnames</span>(gasoline) <span class="ot">&lt;-</span> <span class="fu">c</span>(<span class="st">"Date"</span>, <span class="st">"Price"</span>)</span>
+<span id="cb12-2"><a href="#cb12-2" aria-hidden="true" tabindex="-1"></a><span class="co">#gasoline &lt;- gasoline %&gt;% select(Date, Price)</span></span>
+<span id="cb12-3"><a href="#cb12-3" aria-hidden="true" tabindex="-1"></a>gasoline<span class="sc">$</span>Date <span class="ot">&lt;-</span> <span class="fu">as.Date</span>(gasoline<span class="sc">$</span>Date, <span class="st">"%m/%d/%Y"</span>)</span>
+<span id="cb12-4"><a href="#cb12-4" aria-hidden="true" tabindex="-1"></a>gasoline<span class="sc">$</span>Price <span class="ot">&lt;-</span> <span class="fu">as.numeric</span>(gasoline<span class="sc">$</span>Price)</span>
+<span id="cb12-5"><a href="#cb12-5" aria-hidden="true" tabindex="-1"></a>gasoline <span class="ot">&lt;-</span> gasoline <span class="sc">%&gt;%</span> <span class="fu">arrange</span>(Date)</span>
+<span id="cb12-6"><a href="#cb12-6" aria-hidden="true" tabindex="-1"></a><span class="fu">head</span>(gasoline)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code># A tibble: 6 × 2
+  Date       Price
+  &lt;date&gt;     &lt;dbl&gt;
+1 2000-06-05  1.66
+2 2000-06-12  1.66
+3 2000-06-19  1.66
+4 2000-06-26  1.69
+5 2000-07-03  1.75
+6 2000-07-10  1.77</code></pre>
+</div>
+<div class="sourceCode cell-code" id="cb14"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb14-1"><a href="#cb14-1" aria-hidden="true" tabindex="-1"></a><span class="fu">tail</span>(gasoline)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code># A tibble: 6 × 2
+  Date       Price
+  &lt;date&gt;     &lt;dbl&gt;
+1 2023-10-23  5.33
+2 2023-10-30  5.18
+3 2023-11-06  5.06
+4 2023-11-13  4.98
+5 2023-11-20  4.88
+6 2023-11-27  4.82</code></pre>
+</div>
+</div>
+<p>We need to ensure that Date is converted into “Date” format and rows are rearranged in chronological order.</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb16"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb16-1"><a href="#cb16-1" aria-hidden="true" tabindex="-1"></a><span class="fu">dim</span>(gasoline) <span class="do">## 1226 obs. and 2 variables (Date, Price)</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>[1] 1226    2</code></pre>
+</div>
+</div>
+<p>The gasoline dataset contains weekly California retail gasoline price (in US Dollars per gallon) from June 5, 2000 to November 27, 2023. It has 1226 observations in total and 2 variables - Date and Price.</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb18"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb18-1"><a href="#cb18-1" aria-hidden="true" tabindex="-1"></a><span class="fu">summary</span>(gasoline<span class="sc">$</span>Price)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>   Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
+  1.146   2.519   3.184   3.207   3.859   6.364 </code></pre>
+</div>
+</div>
+<p>When we look at the summary of the dataset, we can see that the lowest price is 1.146 and the highest gasoline price was 6.364. The gasoline price on average is 3.207.</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb20"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb20-1"><a href="#cb20-1" aria-hidden="true" tabindex="-1"></a>gasoline <span class="sc">%&gt;%</span> <span class="fu">filter</span>(Price<span class="sc">==</span><span class="fu">min</span>(Price) <span class="sc">|</span> Price<span class="sc">==</span><span class="fu">max</span>(Price))</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code># A tibble: 2 × 2
+  Date       Price
+  &lt;date&gt;     &lt;dbl&gt;
+1 2001-12-31  1.15
+2 2022-06-13  6.36</code></pre>
+</div>
+</div>
+<p>Throughout the 23 years of gasoline price change, the lowest price of 1.146 was on Dec 31st, 2001, and the highest price of 6.364 was on Jun 13, 2022.</p>
+<p>Let’s plot the overall dataset. The frequency will be 52 because the dataset is weekly collected.</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb22"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb22-1"><a href="#cb22-1" aria-hidden="true" tabindex="-1"></a>x <span class="ot">&lt;-</span> <span class="fu">ts</span>(gasoline<span class="sc">$</span>Price, <span class="at">start=</span><span class="fu">c</span>(<span class="dv">2000</span>,<span class="dv">5</span>), <span class="at">end=</span><span class="fu">c</span>(<span class="dv">2023</span>,<span class="dv">11</span>), <span class="at">frequency=</span><span class="dv">52</span>)</span>
+<span id="cb22-2"><a href="#cb22-2" aria-hidden="true" tabindex="-1"></a><span class="fu">plot.ts</span>(x, <span class="at">type=</span><span class="st">"l"</span>, <span class="at">main=</span><span class="st">"Weekly California Retail Gasoline Prices"</span>, <span class="at">ylab=</span><span class="st">"Price"</span>,</span>
+<span id="cb22-3"><a href="#cb22-3" aria-hidden="true" tabindex="-1"></a>        <span class="at">col=</span><span class="st">"blue"</span>) </span>
+<span id="cb22-4"><a href="#cb22-4" aria-hidden="true" tabindex="-1"></a><span class="fu">grid</span>(<span class="at">nx =</span> <span class="cn">NA</span>, <span class="at">ny =</span> <span class="cn">NULL</span>, <span class="at">lty =</span> <span class="dv">2</span>, <span class="at">col =</span> <span class="st">"gray"</span>, <span class="at">lwd =</span> <span class="dv">2</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output-display">
+<p><img src="vignette_files/figure-html/unnamed-chunk-7-1.png" class="img-fluid" width="672"></p>
+</div>
+</div>
+<p>From the plot, we can see that the overall price is increasing over time. Multiple fluctuations are found, but the price tends to drop once it hits the peak. It also does not seem to have any clear seasonal pattern.</p>
+</section>
+<section id="lstm" class="level2">
+<h2 class="anchored" data-anchor-id="lstm">LSTM</h2>
+<p>We will now do time series analysis on our data using neural networks through the Keras library. We will specifically be using a LSTM model which will dive into in more detail later.</p>
+</section>
+<section id="creating-time-series" class="level1">
+<h1>Creating Time Series</h1>
+<p>We will now convert our data into a time series object using the ts function and plot our time series.</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb23"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb23-1"><a href="#cb23-1" aria-hidden="true" tabindex="-1"></a>oil_price <span class="ot">&lt;-</span> gasoline<span class="sc">$</span>Price</span>
+<span id="cb23-2"><a href="#cb23-2" aria-hidden="true" tabindex="-1"></a>  </span>
+<span id="cb23-3"><a href="#cb23-3" aria-hidden="true" tabindex="-1"></a>oil_ts <span class="ot">&lt;-</span> <span class="fu">ts</span>(<span class="at">data =</span> oil_price, <span class="at">start =</span> <span class="fu">c</span>(<span class="dv">2000</span>, <span class="dv">6</span>), <span class="at">end =</span> <span class="fu">c</span>(<span class="dv">2023</span>, <span class="dv">12</span>), <span class="at">frequency =</span> <span class="dv">52</span>)</span>
+<span id="cb23-4"><a href="#cb23-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb23-5"><a href="#cb23-5" aria-hidden="true" tabindex="-1"></a><span class="fu">plot</span>(oil_ts)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output-display">
+<p><img src="vignette_files/figure-html/unnamed-chunk-8-1.png" class="img-fluid" width="672"></p>
+</div>
+</div>
+</section>
+<section id="data-preparation" class="level1">
+<h1>Data Preparation</h1>
+<p>Now that we have our data as a time series object we will get ready to do our neural network modeling. First we define our window size for our model which will be 10 in this case. The window size is the amount of previous observations that our model will use to predict the next point. We will also split our time series into a training and testing group using the first 80% for training and the remaining 20% for testing.</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb24"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb24-1"><a href="#cb24-1" aria-hidden="true" tabindex="-1"></a>window_size <span class="ot">&lt;-</span> <span class="dv">10</span></span>
+<span id="cb24-2"><a href="#cb24-2" aria-hidden="true" tabindex="-1"></a>train_size <span class="ot">&lt;-</span> <span class="fu">floor</span>(<span class="fu">length</span>(oil_ts) <span class="sc">*</span> <span class="fl">0.8</span>)  <span class="co"># 80% for training</span></span>
+<span id="cb24-3"><a href="#cb24-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb24-4"><a href="#cb24-4" aria-hidden="true" tabindex="-1"></a>train_data <span class="ot">&lt;-</span> oil_ts[<span class="dv">1</span><span class="sc">:</span>train_size]</span>
+<span id="cb24-5"><a href="#cb24-5" aria-hidden="true" tabindex="-1"></a>test_data <span class="ot">&lt;-</span> oil_ts[(train_size <span class="sc">+</span> <span class="dv">1</span>)<span class="sc">:</span><span class="fu">length</span>(oil_ts)]</span>
+<span id="cb24-6"><a href="#cb24-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb24-7"><a href="#cb24-7" aria-hidden="true" tabindex="-1"></a>train_dates <span class="ot">&lt;-</span> <span class="fu">time</span>(oil_ts)[<span class="dv">1</span><span class="sc">:</span>train_size]</span>
+<span id="cb24-8"><a href="#cb24-8" aria-hidden="true" tabindex="-1"></a>test_dates <span class="ot">&lt;-</span> <span class="fu">time</span>(oil_ts)[(train_size <span class="sc">+</span> <span class="dv">1</span> <span class="sc">+</span> window_size)<span class="sc">:</span><span class="fu">length</span>(oil_ts)]</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<p>We also created lists of the dates for each group for plotting later on.</p>
+<section id="sequence-creation" class="level2">
+<h2 class="anchored" data-anchor-id="sequence-creation">Sequence Creation</h2>
+<p>LSTM models are powerful because we can train them using sequences instead of individual observations. For our model we will have sequences of length 10 (our window size). We will first create a function that will take take in our data values and window size and return a list containing a 3D array of the sequences and a numeric vector of our labels which are the values that each sequence is predicting.</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb25"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb25-1"><a href="#cb25-1" aria-hidden="true" tabindex="-1"></a>create_sequences <span class="ot">&lt;-</span> <span class="cf">function</span>(data, window_size) {</span>
+<span id="cb25-2"><a href="#cb25-2" aria-hidden="true" tabindex="-1"></a>  sequences <span class="ot">&lt;-</span> <span class="fu">matrix</span>(<span class="dv">0</span>, <span class="at">nrow =</span> <span class="fu">length</span>(data) <span class="sc">-</span> window_size, <span class="at">ncol =</span> window_size)</span>
+<span id="cb25-3"><a href="#cb25-3" aria-hidden="true" tabindex="-1"></a>  labels <span class="ot">&lt;-</span> <span class="fu">numeric</span>(<span class="fu">length</span>(data) <span class="sc">-</span> window_size)</span>
+<span id="cb25-4"><a href="#cb25-4" aria-hidden="true" tabindex="-1"></a>  </span>
+<span id="cb25-5"><a href="#cb25-5" aria-hidden="true" tabindex="-1"></a>  <span class="cf">for</span> (i <span class="cf">in</span> <span class="dv">1</span><span class="sc">:</span>(<span class="fu">length</span>(data) <span class="sc">-</span> window_size)) {</span>
+<span id="cb25-6"><a href="#cb25-6" aria-hidden="true" tabindex="-1"></a>    sequences[i, ] <span class="ot">&lt;-</span> data[i<span class="sc">:</span>(i <span class="sc">+</span> window_size <span class="sc">-</span> <span class="dv">1</span>)]</span>
+<span id="cb25-7"><a href="#cb25-7" aria-hidden="true" tabindex="-1"></a>    labels[i] <span class="ot">&lt;-</span> data[i <span class="sc">+</span> window_size]</span>
+<span id="cb25-8"><a href="#cb25-8" aria-hidden="true" tabindex="-1"></a>  }</span>
+<span id="cb25-9"><a href="#cb25-9" aria-hidden="true" tabindex="-1"></a>  </span>
+<span id="cb25-10"><a href="#cb25-10" aria-hidden="true" tabindex="-1"></a>  <span class="fu">list</span>(<span class="at">sequences =</span> <span class="fu">array</span>(sequences, <span class="at">dim =</span> <span class="fu">c</span>(<span class="fu">length</span>(data) <span class="sc">-</span> window_size, window_size, <span class="dv">1</span>)), <span class="at">labels =</span> labels)</span>
+<span id="cb25-11"><a href="#cb25-11" aria-hidden="true" tabindex="-1"></a>}</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<p>Now that we made our function, we will create sequences for our training data.</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb26"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb26-1"><a href="#cb26-1" aria-hidden="true" tabindex="-1"></a>train_sequences <span class="ot">&lt;-</span> <span class="fu">create_sequences</span>(train_data, window_size)</span>
+<span id="cb26-2"><a href="#cb26-2" aria-hidden="true" tabindex="-1"></a>train_sequences_array <span class="ot">&lt;-</span> train_sequences<span class="sc">$</span>sequences</span>
+<span id="cb26-3"><a href="#cb26-3" aria-hidden="true" tabindex="-1"></a>train_labels <span class="ot">&lt;-</span> train_sequences<span class="sc">$</span>labels</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+</section>
+</section>
+<section id="building-lstm-model" class="level1">
+<h1>Building LSTM Model</h1>
+<p>We will now build a simple LSTM model to predict future gas prices.</p>
+<p>LSTMs are a type of recurrent neural network (RNN) that are good at learning from sequences of data and are particularly effective for time series forecasting because they can remember information over long periods, which is crucial for understanding trends and patterns in time series data.</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb27"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb27-1"><a href="#cb27-1" aria-hidden="true" tabindex="-1"></a>model <span class="ot">&lt;-</span> <span class="fu">keras_model_sequential</span>() <span class="sc">%&gt;%</span></span>
+<span id="cb27-2"><a href="#cb27-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">layer_lstm</span>(<span class="at">units =</span> <span class="dv">50</span>, <span class="at">input_shape =</span> <span class="fu">c</span>(window_size, <span class="dv">1</span>)) <span class="sc">%&gt;%</span></span>
+<span id="cb27-3"><a href="#cb27-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">layer_dense</span>(<span class="at">units =</span> <span class="dv">1</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<p>Our model consists of an LSTM layer that processes the sequential data, followed by a dense layer for output.</p>
+<p>Now that we have created our model we will compile it using mean squared error as our loss function, nadam as our optimizer, and mean absolute error as our performance metric. We are using nadam instead of adam so we can adjust the learning rate of our model. For this model we are using a learning rate of 0.001.</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb28"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb28-1"><a href="#cb28-1" aria-hidden="true" tabindex="-1"></a>optimizer <span class="ot">&lt;-</span> <span class="fu">optimizer_nadam</span>(<span class="at">learning_rate =</span> <span class="fl">0.001</span>)</span>
+<span id="cb28-2"><a href="#cb28-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb28-3"><a href="#cb28-3" aria-hidden="true" tabindex="-1"></a>model <span class="sc">%&gt;%</span> <span class="fu">compile</span>(</span>
+<span id="cb28-4"><a href="#cb28-4" aria-hidden="true" tabindex="-1"></a>  <span class="at">loss =</span> <span class="st">'mean_squared_error'</span>,</span>
+<span id="cb28-5"><a href="#cb28-5" aria-hidden="true" tabindex="-1"></a>  <span class="at">optimizer =</span> optimizer,</span>
+<span id="cb28-6"><a href="#cb28-6" aria-hidden="true" tabindex="-1"></a>  <span class="at">metrics =</span> <span class="fu">c</span>(<span class="st">'mean_absolute_error'</span>)</span>
+<span id="cb28-7"><a href="#cb28-7" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb28-8"><a href="#cb28-8" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb28-9"><a href="#cb28-9" aria-hidden="true" tabindex="-1"></a><span class="fu">summary</span>(model)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>Model: "sequential"
+________________________________________________________________________________
+ Layer (type)                       Output Shape                    Param #     
+================================================================================
+ lstm (LSTM)                        (None, 50)                      10400       
+ dense (Dense)                      (None, 1)                       51          
+================================================================================
+Total params: 10451 (40.82 KB)
+Trainable params: 10451 (40.82 KB)
+Non-trainable params: 0 (0.00 Byte)
+________________________________________________________________________________</code></pre>
+</div>
+</div>
+<p>Using summary we can see the layers in our model and the number of parameters in each!</p>
+</section>
+<section id="training-our-model" class="level1">
+<h1>Training Our Model</h1>
+<p>Now that we have created our model we will train it on our training data.</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb30"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb30-1"><a href="#cb30-1" aria-hidden="true" tabindex="-1"></a>history <span class="ot">&lt;-</span> model <span class="sc">%&gt;%</span> <span class="fu">fit</span>(</span>
+<span id="cb30-2"><a href="#cb30-2" aria-hidden="true" tabindex="-1"></a>  <span class="at">x =</span> train_sequences_array,</span>
+<span id="cb30-3"><a href="#cb30-3" aria-hidden="true" tabindex="-1"></a>  <span class="at">y =</span> train_labels,</span>
+<span id="cb30-4"><a href="#cb30-4" aria-hidden="true" tabindex="-1"></a>  <span class="at">epochs =</span> <span class="dv">50</span>,</span>
+<span id="cb30-5"><a href="#cb30-5" aria-hidden="true" tabindex="-1"></a>  <span class="at">batch_size =</span> <span class="dv">16</span>,</span>
+<span id="cb30-6"><a href="#cb30-6" aria-hidden="true" tabindex="-1"></a>  <span class="at">validation_split =</span> <span class="fl">0.2</span></span>
+<span id="cb30-7"><a href="#cb30-7" aria-hidden="true" tabindex="-1"></a>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>Epoch 1/50
+48/48 - 17s - loss: 3.7118 - mean_absolute_error: 1.4989 - val_loss: 0.0978 - val_mean_absolute_error: 0.2648 - 17s/epoch - 364ms/step
+Epoch 2/50
+48/48 - 1s - loss: 0.2096 - mean_absolute_error: 0.3598 - val_loss: 0.0369 - val_mean_absolute_error: 0.1466 - 1s/epoch - 26ms/step
+Epoch 3/50
+48/48 - 1s - loss: 0.0624 - mean_absolute_error: 0.1821 - val_loss: 0.0278 - val_mean_absolute_error: 0.1236 - 1s/epoch - 24ms/step
+Epoch 4/50
+48/48 - 2s - loss: 0.0489 - mean_absolute_error: 0.1610 - val_loss: 0.0274 - val_mean_absolute_error: 0.1215 - 2s/epoch - 43ms/step
+Epoch 5/50
+48/48 - 1s - loss: 0.0422 - mean_absolute_error: 0.1504 - val_loss: 0.0277 - val_mean_absolute_error: 0.1247 - 1s/epoch - 27ms/step
+Epoch 6/50
+48/48 - 1s - loss: 0.0365 - mean_absolute_error: 0.1425 - val_loss: 0.0231 - val_mean_absolute_error: 0.1111 - 1s/epoch - 22ms/step
+Epoch 7/50
+48/48 - 1s - loss: 0.0319 - mean_absolute_error: 0.1345 - val_loss: 0.0231 - val_mean_absolute_error: 0.1139 - 1s/epoch - 23ms/step
+Epoch 8/50
+48/48 - 1s - loss: 0.0288 - mean_absolute_error: 0.1270 - val_loss: 0.0207 - val_mean_absolute_error: 0.1040 - 1s/epoch - 21ms/step
+Epoch 9/50
+48/48 - 1s - loss: 0.0268 - mean_absolute_error: 0.1247 - val_loss: 0.0200 - val_mean_absolute_error: 0.1013 - 980ms/epoch - 20ms/step
+Epoch 10/50
+48/48 - 1s - loss: 0.0259 - mean_absolute_error: 0.1208 - val_loss: 0.0201 - val_mean_absolute_error: 0.1022 - 1s/epoch - 25ms/step
+Epoch 11/50
+48/48 - 1s - loss: 0.0248 - mean_absolute_error: 0.1173 - val_loss: 0.0249 - val_mean_absolute_error: 0.1209 - 924ms/epoch - 19ms/step
+Epoch 12/50
+48/48 - 1s - loss: 0.0237 - mean_absolute_error: 0.1165 - val_loss: 0.0188 - val_mean_absolute_error: 0.0978 - 1s/epoch - 22ms/step
+Epoch 13/50
+48/48 - 1s - loss: 0.0223 - mean_absolute_error: 0.1129 - val_loss: 0.0192 - val_mean_absolute_error: 0.0998 - 1s/epoch - 21ms/step
+Epoch 14/50
+48/48 - 2s - loss: 0.0214 - mean_absolute_error: 0.1118 - val_loss: 0.0194 - val_mean_absolute_error: 0.1008 - 2s/epoch - 33ms/step
+Epoch 15/50
+48/48 - 1s - loss: 0.0217 - mean_absolute_error: 0.1110 - val_loss: 0.0236 - val_mean_absolute_error: 0.1175 - 950ms/epoch - 20ms/step
+Epoch 16/50
+48/48 - 1s - loss: 0.0206 - mean_absolute_error: 0.1081 - val_loss: 0.0174 - val_mean_absolute_error: 0.0925 - 908ms/epoch - 19ms/step
+Epoch 17/50
+48/48 - 1s - loss: 0.0195 - mean_absolute_error: 0.1051 - val_loss: 0.0175 - val_mean_absolute_error: 0.0943 - 842ms/epoch - 18ms/step
+Epoch 18/50
+48/48 - 1s - loss: 0.0188 - mean_absolute_error: 0.1042 - val_loss: 0.0166 - val_mean_absolute_error: 0.0902 - 988ms/epoch - 21ms/step
+Epoch 19/50
+48/48 - 1s - loss: 0.0182 - mean_absolute_error: 0.1019 - val_loss: 0.0175 - val_mean_absolute_error: 0.0952 - 821ms/epoch - 17ms/step
+Epoch 20/50
+48/48 - 1s - loss: 0.0175 - mean_absolute_error: 0.1009 - val_loss: 0.0163 - val_mean_absolute_error: 0.0892 - 1s/epoch - 22ms/step
+Epoch 21/50
+48/48 - 1s - loss: 0.0171 - mean_absolute_error: 0.0994 - val_loss: 0.0178 - val_mean_absolute_error: 0.0974 - 1s/epoch - 22ms/step
+Epoch 22/50
+48/48 - 1s - loss: 0.0172 - mean_absolute_error: 0.0991 - val_loss: 0.0157 - val_mean_absolute_error: 0.0883 - 961ms/epoch - 20ms/step
+Epoch 23/50
+48/48 - 1s - loss: 0.0166 - mean_absolute_error: 0.0971 - val_loss: 0.0158 - val_mean_absolute_error: 0.0894 - 932ms/epoch - 19ms/step
+Epoch 24/50
+48/48 - 1s - loss: 0.0159 - mean_absolute_error: 0.0953 - val_loss: 0.0182 - val_mean_absolute_error: 0.1011 - 887ms/epoch - 18ms/step
+Epoch 25/50
+48/48 - 1s - loss: 0.0156 - mean_absolute_error: 0.0952 - val_loss: 0.0186 - val_mean_absolute_error: 0.1029 - 1s/epoch - 22ms/step
+Epoch 26/50
+48/48 - 1s - loss: 0.0153 - mean_absolute_error: 0.0931 - val_loss: 0.0152 - val_mean_absolute_error: 0.0880 - 1000ms/epoch - 21ms/step
+Epoch 27/50
+48/48 - 1s - loss: 0.0148 - mean_absolute_error: 0.0922 - val_loss: 0.0155 - val_mean_absolute_error: 0.0902 - 921ms/epoch - 19ms/step
+Epoch 28/50
+48/48 - 1s - loss: 0.0141 - mean_absolute_error: 0.0882 - val_loss: 0.0135 - val_mean_absolute_error: 0.0805 - 880ms/epoch - 18ms/step
+Epoch 29/50
+48/48 - 1s - loss: 0.0141 - mean_absolute_error: 0.0894 - val_loss: 0.0130 - val_mean_absolute_error: 0.0784 - 1s/epoch - 22ms/step
+Epoch 30/50
+48/48 - 1s - loss: 0.0139 - mean_absolute_error: 0.0892 - val_loss: 0.0180 - val_mean_absolute_error: 0.1023 - 870ms/epoch - 18ms/step
+Epoch 31/50
+48/48 - 1s - loss: 0.0131 - mean_absolute_error: 0.0855 - val_loss: 0.0126 - val_mean_absolute_error: 0.0771 - 912ms/epoch - 19ms/step
+Epoch 32/50
+48/48 - 1s - loss: 0.0128 - mean_absolute_error: 0.0847 - val_loss: 0.0121 - val_mean_absolute_error: 0.0747 - 897ms/epoch - 19ms/step
+Epoch 33/50
+48/48 - 1s - loss: 0.0124 - mean_absolute_error: 0.0839 - val_loss: 0.0151 - val_mean_absolute_error: 0.0938 - 966ms/epoch - 20ms/step
+Epoch 34/50
+48/48 - 1s - loss: 0.0122 - mean_absolute_error: 0.0832 - val_loss: 0.0115 - val_mean_absolute_error: 0.0728 - 970ms/epoch - 20ms/step
+Epoch 35/50
+48/48 - 1s - loss: 0.0118 - mean_absolute_error: 0.0817 - val_loss: 0.0113 - val_mean_absolute_error: 0.0720 - 905ms/epoch - 19ms/step
+Epoch 36/50
+48/48 - 1s - loss: 0.0115 - mean_absolute_error: 0.0809 - val_loss: 0.0148 - val_mean_absolute_error: 0.0951 - 1s/epoch - 21ms/step
+Epoch 37/50
+48/48 - 1s - loss: 0.0110 - mean_absolute_error: 0.0795 - val_loss: 0.0120 - val_mean_absolute_error: 0.0803 - 912ms/epoch - 19ms/step
+Epoch 38/50
+48/48 - 1s - loss: 0.0108 - mean_absolute_error: 0.0782 - val_loss: 0.0103 - val_mean_absolute_error: 0.0679 - 866ms/epoch - 18ms/step
+Epoch 39/50
+48/48 - 1s - loss: 0.0102 - mean_absolute_error: 0.0756 - val_loss: 0.0101 - val_mean_absolute_error: 0.0678 - 870ms/epoch - 18ms/step
+Epoch 40/50
+48/48 - 1s - loss: 0.0102 - mean_absolute_error: 0.0749 - val_loss: 0.0102 - val_mean_absolute_error: 0.0710 - 943ms/epoch - 20ms/step
+Epoch 41/50
+48/48 - 1s - loss: 0.0100 - mean_absolute_error: 0.0740 - val_loss: 0.0094 - val_mean_absolute_error: 0.0650 - 1s/epoch - 22ms/step
+Epoch 42/50
+48/48 - 1s - loss: 0.0093 - mean_absolute_error: 0.0715 - val_loss: 0.0105 - val_mean_absolute_error: 0.0722 - 865ms/epoch - 18ms/step
+Epoch 43/50
+48/48 - 1s - loss: 0.0091 - mean_absolute_error: 0.0709 - val_loss: 0.0089 - val_mean_absolute_error: 0.0623 - 916ms/epoch - 19ms/step
+Epoch 44/50
+48/48 - 1s - loss: 0.0087 - mean_absolute_error: 0.0687 - val_loss: 0.0092 - val_mean_absolute_error: 0.0675 - 862ms/epoch - 18ms/step
+Epoch 45/50
+48/48 - 1s - loss: 0.0087 - mean_absolute_error: 0.0690 - val_loss: 0.0089 - val_mean_absolute_error: 0.0651 - 796ms/epoch - 17ms/step
+Epoch 46/50
+48/48 - 1s - loss: 0.0082 - mean_absolute_error: 0.0675 - val_loss: 0.0087 - val_mean_absolute_error: 0.0645 - 871ms/epoch - 18ms/step
+Epoch 47/50
+48/48 - 1s - loss: 0.0078 - mean_absolute_error: 0.0653 - val_loss: 0.0096 - val_mean_absolute_error: 0.0720 - 941ms/epoch - 20ms/step
+Epoch 48/50
+48/48 - 1s - loss: 0.0076 - mean_absolute_error: 0.0636 - val_loss: 0.0081 - val_mean_absolute_error: 0.0603 - 948ms/epoch - 20ms/step
+Epoch 49/50
+48/48 - 1s - loss: 0.0075 - mean_absolute_error: 0.0628 - val_loss: 0.0101 - val_mean_absolute_error: 0.0770 - 776ms/epoch - 16ms/step
+Epoch 50/50
+48/48 - 1s - loss: 0.0071 - mean_absolute_error: 0.0610 - val_loss: 0.0085 - val_mean_absolute_error: 0.0649 - 994ms/epoch - 21ms/step</code></pre>
+</div>
+<div class="sourceCode cell-code" id="cb32"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb32-1"><a href="#cb32-1" aria-hidden="true" tabindex="-1"></a><span class="fu">plot</span>(history)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output-display">
+<p><img src="vignette_files/figure-html/unnamed-chunk-14-1.png" class="img-fluid" width="672"></p>
+</div>
+</div>
+<p>Looking at our training data it looks like that our model converges to a mean absolute error of around 0.06</p>
+</section>
+<section id="evaluating-our-model" class="level1">
+<h1>Evaluating Our Model</h1>
+<p>Now that we have trained our model we will evaluate it on our testing set. We first create our test data sequences and then use the evaluate function to see how well our model did.</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb33"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb33-1"><a href="#cb33-1" aria-hidden="true" tabindex="-1"></a>test_sequences <span class="ot">&lt;-</span> <span class="fu">create_sequences</span>(test_data, window_size)</span>
+<span id="cb33-2"><a href="#cb33-2" aria-hidden="true" tabindex="-1"></a>test_sequences_matrix <span class="ot">&lt;-</span> test_sequences<span class="sc">$</span>sequences</span>
+<span id="cb33-3"><a href="#cb33-3" aria-hidden="true" tabindex="-1"></a>test_labels <span class="ot">&lt;-</span> test_sequences<span class="sc">$</span>labels</span>
+<span id="cb33-4"><a href="#cb33-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb33-5"><a href="#cb33-5" aria-hidden="true" tabindex="-1"></a>results <span class="ot">&lt;-</span> model <span class="sc">%&gt;%</span> <span class="fu">evaluate</span>(test_sequences_matrix, test_labels)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>8/8 - 0s - loss: 0.0228 - mean_absolute_error: 0.0851 - 115ms/epoch - 14ms/step</code></pre>
+</div>
+</div>
+<p>It seems that our model did slightly worse on our testing data with a mean absolute error of 0.08 but it still performs very well. Also, we will be comparing this mean absolute error with our ARIMA model forecast in the future.</p>
+<p>We will now make predictions using our model and plot it over the actual data to visually see how our model performs.</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb35"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb35-1"><a href="#cb35-1" aria-hidden="true" tabindex="-1"></a>predictions <span class="ot">&lt;-</span> model <span class="sc">%&gt;%</span> <span class="fu">predict</span>(test_sequences_matrix)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>8/8 - 3s - 3s/epoch - 316ms/step</code></pre>
+</div>
+<div class="sourceCode cell-code" id="cb37"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb37-1"><a href="#cb37-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Plot predictions against actual values</span></span>
+<span id="cb37-2"><a href="#cb37-2" aria-hidden="true" tabindex="-1"></a><span class="fu">plot</span>(test_dates, test_labels, <span class="at">type =</span> <span class="st">'l'</span>, <span class="at">main=</span><span class="st">"LSTM Forecasting: Future Gasoline Prices"</span>, <span class="at">col =</span> <span class="st">'blue'</span>, <span class="at">ylab =</span> <span class="st">'Gasoline Prices'</span>, <span class="at">xlab =</span> <span class="st">'Year'</span>)</span>
+<span id="cb37-3"><a href="#cb37-3" aria-hidden="true" tabindex="-1"></a><span class="fu">lines</span>(test_dates, predictions, <span class="at">col =</span> <span class="st">'red'</span>)</span>
+<span id="cb37-4"><a href="#cb37-4" aria-hidden="true" tabindex="-1"></a><span class="fu">legend</span>(<span class="st">'topleft'</span>, <span class="at">legend =</span> <span class="fu">c</span>(<span class="st">'Actual'</span>, <span class="st">'Predicted'</span>), <span class="at">col =</span> <span class="fu">c</span>(<span class="st">'blue'</span>, <span class="st">'red'</span>), <span class="at">lty =</span> <span class="dv">1</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output-display">
+<p><img src="vignette_files/figure-html/unnamed-chunk-16-1.png" class="img-fluid" width="672"></p>
+</div>
+</div>
+<p>Looking at the plot it seems that our model actually performed very well and looks very similar to the actual testing data.</p>
+<section id="arima-modeling" class="level2">
+<h2 class="anchored" data-anchor-id="arima-modeling">ARIMA Modeling</h2>
+<p>Before diving into the specifics of the code, it’s crucial to understand the concept of stationarity in time series analysis. A time series is said to be stationary if its statistical properties, such as mean, variance, and autocorrelation, are constant over time. In simpler terms, a stationary time series does not exhibit trends or seasonality and has a consistent structure over time, which makes it predictable.</p>
+<p>Stationarity is a fundamental assumption in many time series forecasting methods, including ARIMA modeling. This is because predictable behavior in the past will likely persist in the future, making the forecasts more reliable. Non-stationary time series, on the other hand, can change their behavior over time, leading to unreliable and inaccurate predictions.</p>
+<p>There are two main types of non-stationarity:</p>
+<ol type="1">
+<li>Trend Stationarity: Where the series has an underlying trend, but the fluctuations around this trend are stationary. Difference Stationarity: Where the series becomes stationary after differencing, i.e., subtracting the current value from the previous value.</li>
+<li>The Augmented Dickey-Fuller (ADF) test, which we perform in our analysis, specifically tests for difference stationarity.</li>
+</ol>
+<p>With this understanding, we perform the Augmented Dickey-Fuller (ADF) test to check whether our time series data (the gasoline prices) is stationary. This test evaluates the null hypothesis that the time series can be represented by a unit root, indicating it is non-stationary. Essentially, if the test finds strong evidence of a unit root, the time series is likely non-stationary, and vice versa.</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb38"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb38-1"><a href="#cb38-1" aria-hidden="true" tabindex="-1"></a>adf_test_result <span class="ot">&lt;-</span> <span class="fu">adf.test</span>(oil_ts, <span class="at">alternative =</span> <span class="st">"stationary"</span>)</span>
+<span id="cb38-2"><a href="#cb38-2" aria-hidden="true" tabindex="-1"></a><span class="fu">print</span>(adf_test_result)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>
+    Augmented Dickey-Fuller Test
+
+data:  oil_ts
+Dickey-Fuller = -3.4331, Lag order = 10, p-value = 0.04873
+alternative hypothesis: stationary</code></pre>
+</div>
+</div>
+<p>In this output, the Dickey-Fuller statistic is -3.4466, and the p-value is 0.04743. The p-value is crucial for our decision-making: a low p-value (typically &lt; 0.05) implies that the null hypothesis of non-stationarity can be rejected. Therefore, in our case, with a p-value of 0.04743, we conclude that the time series is stationary. This means that our time series does not have unit root characteristics and is suitable for ARIMA modeling.</p>
+<p>Before modeling, we split our data to avoid lookahead bias:</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb40"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb40-1"><a href="#cb40-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Determining the split point for training and testing sets</span></span>
+<span id="cb40-2"><a href="#cb40-2" aria-hidden="true" tabindex="-1"></a>split_point <span class="ot">&lt;-</span> <span class="fu">round</span>(<span class="fu">nrow</span>(gasoline) <span class="sc">*</span> <span class="fl">0.8</span>)</span>
+<span id="cb40-3"><a href="#cb40-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb40-4"><a href="#cb40-4" aria-hidden="true" tabindex="-1"></a><span class="co"># Creating the training and testing sets</span></span>
+<span id="cb40-5"><a href="#cb40-5" aria-hidden="true" tabindex="-1"></a>training_set <span class="ot">&lt;-</span> oil_ts[<span class="dv">1</span><span class="sc">:</span>split_point]</span>
+<span id="cb40-6"><a href="#cb40-6" aria-hidden="true" tabindex="-1"></a>testing_set <span class="ot">&lt;-</span> oil_ts[(split_point <span class="sc">+</span> <span class="dv">1</span>)<span class="sc">:</span><span class="fu">length</span>(oil_ts)]</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<p>This division allows us to evaluate our model on unseen data.</p>
+<p>Before moving on to building the model, we can clearly observe the big variance shown in the graph:</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb41"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb41-1"><a href="#cb41-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Plotting the time series data</span></span>
+<span id="cb41-2"><a href="#cb41-2" aria-hidden="true" tabindex="-1"></a><span class="fu">ggplot</span>(gasoline, <span class="fu">aes</span>(<span class="at">x =</span> Date, <span class="at">y =</span> Price)) <span class="sc">+</span> </span>
+<span id="cb41-3"><a href="#cb41-3" aria-hidden="true" tabindex="-1"></a>    <span class="fu">geom_line</span>() <span class="sc">+</span> </span>
+<span id="cb41-4"><a href="#cb41-4" aria-hidden="true" tabindex="-1"></a>    <span class="fu">theme_minimal</span>() <span class="sc">+</span> </span>
+<span id="cb41-5"><a href="#cb41-5" aria-hidden="true" tabindex="-1"></a>    <span class="fu">labs</span>(<span class="at">title =</span> <span class="st">"Time Series of Gasoline Prices"</span>,</span>
+<span id="cb41-6"><a href="#cb41-6" aria-hidden="true" tabindex="-1"></a>         <span class="at">x =</span> <span class="st">"Date"</span>,</span>
+<span id="cb41-7"><a href="#cb41-7" aria-hidden="true" tabindex="-1"></a>         <span class="at">y =</span> <span class="st">"Price per Gallon"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output-display">
+<p><img src="vignette_files/figure-html/unnamed-chunk-19-1.png" class="img-fluid" width="672"></p>
+</div>
+</div>
+<p>To address non-stationarity aspects like high variance, we apply log transformation:</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb42"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb42-1"><a href="#cb42-1" aria-hidden="true" tabindex="-1"></a>logdata <span class="ot">&lt;-</span> <span class="fu">log</span>(training_set)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb43"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb43-1"><a href="#cb43-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Plot the logtrain data</span></span>
+<span id="cb43-2"><a href="#cb43-2" aria-hidden="true" tabindex="-1"></a><span class="fu">ts.plot</span>(logdata, <span class="at">main =</span> <span class="st">"Plot of Log Transformed Training Set"</span>,</span>
+<span id="cb43-3"><a href="#cb43-3" aria-hidden="true" tabindex="-1"></a>        <span class="at">ylab =</span> <span class="st">"Log(Price per Gallon)"</span>, <span class="at">xlab =</span> <span class="st">"Time"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output-display">
+<p><img src="vignette_files/figure-html/unnamed-chunk-21-1.png" class="img-fluid" width="672"></p>
+</div>
+<div class="sourceCode cell-code" id="cb44"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb44-1"><a href="#cb44-1" aria-hidden="true" tabindex="-1"></a><span class="fu">var</span>(oil_ts)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>[1] 0.9405439</code></pre>
+</div>
+<div class="sourceCode cell-code" id="cb46"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb46-1"><a href="#cb46-1" aria-hidden="true" tabindex="-1"></a><span class="fu">var</span>(logdata)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>[1] 0.09608259</code></pre>
+</div>
+</div>
+<p>The results show a significant reduction in variance, indicating our transformations were effective.</p>
+<p>After preparing our data and ensuring it is suitable for time series analysis, we proceed to model selection. The choice of the appropriate ARIMA model is crucial to accurately capturing the underlying patterns in our time series data.</p>
+<p>We use the auto.arima function from the forecast package to automatically determine the best fitting ARIMA model. The auto.arima function explores various combinations of AR (autoregressive), I (integrated), and MA (moving average) components to identify the model that best fits our data. It does so by minimizing the AIC (Akaike Information Criterion), a measure that balances the model’s fit against its complexity.</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb48"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb48-1"><a href="#cb48-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Using auto.arima to find the best ARIMA model</span></span>
+<span id="cb48-2"><a href="#cb48-2" aria-hidden="true" tabindex="-1"></a>optimal_arima_model <span class="ot">&lt;-</span> <span class="fu">auto.arima</span>(logdata)</span>
+<span id="cb48-3"><a href="#cb48-3" aria-hidden="true" tabindex="-1"></a><span class="fu">summary</span>(optimal_arima_model)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>Series: logdata 
+ARIMA(3,1,2) 
+
+Coefficients:
+         ar1     ar2      ar3     ma1      ma2
+      0.6502  0.9062  -0.6064  0.0131  -0.9597
+s.e.  0.0293  0.0267   0.0273  0.0154   0.0149
+
+sigma^2 = 0.0003082:  log likelihood = 2572.98
+AIC=-5133.95   AICc=-5133.87   BIC=-5104.63
+
+Training set error measures:
+                       ME       RMSE        MAE        MPE     MAPE      MASE
+Training set 0.0006715805 0.01750127 0.01136695 0.06212362 1.299757 0.7060412
+                    ACF1
+Training set -0.02405518</code></pre>
+</div>
+</div>
+<p>From the summary above, this model, ARIMA(3,1,2), suggests a somewhat complex dynamic in the data, with three autoregressive terms, one level of differencing, and two moving average terms. The coefficients of the model and their standard errors provide insights into the significance and impact of each term in the model. Lower AIC and BIC values indicate a better model fit, taking into account the number of parameters.</p>
+</section>
+</section>
+<section id="model-diagnostics" class="level1">
+<h1>Model Diagnostics</h1>
+<p>After fitting the ARIMA model, we analyze its residuals to assess the adequacy of the model. The plots of residuals, their ACF, and PACF, along with the histogram and Q-Q plot, are crucial for understanding whether the residuals behave like white noise, which is a key assumption in ARIMA modeling. The histogram and Q-Q plot assess the normality of the residuals.</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb50"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb50-1"><a href="#cb50-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Fit the ARIMA(3,1,2) model to the log-trasformed data</span></span>
+<span id="cb50-2"><a href="#cb50-2" aria-hidden="true" tabindex="-1"></a>fit_arima <span class="ot">&lt;-</span> <span class="fu">Arima</span>(logdata, <span class="at">order =</span> <span class="fu">c</span>(<span class="dv">3</span>,<span class="dv">1</span>,<span class="dv">2</span>))</span>
+<span id="cb50-3"><a href="#cb50-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb50-4"><a href="#cb50-4" aria-hidden="true" tabindex="-1"></a><span class="co"># Check the residuals</span></span>
+<span id="cb50-5"><a href="#cb50-5" aria-hidden="true" tabindex="-1"></a>residuals <span class="ot">&lt;-</span> <span class="fu">residuals</span>(fit_arima)</span>
+<span id="cb50-6"><a href="#cb50-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb50-7"><a href="#cb50-7" aria-hidden="true" tabindex="-1"></a><span class="fu">plot</span>(residuals, <span class="at">main =</span> <span class="st">"Residuals of ARIMA(3,1,2) Model"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output-display">
+<p><img src="vignette_files/figure-html/unnamed-chunk-23-1.png" class="img-fluid" width="672"></p>
+</div>
+<div class="sourceCode cell-code" id="cb51"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb51-1"><a href="#cb51-1" aria-hidden="true" tabindex="-1"></a><span class="fu">acf</span>(residuals, <span class="at">main =</span> <span class="st">"ACF of Residuals"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output-display">
+<p><img src="vignette_files/figure-html/unnamed-chunk-23-2.png" class="img-fluid" width="672"></p>
+</div>
+<div class="sourceCode cell-code" id="cb52"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb52-1"><a href="#cb52-1" aria-hidden="true" tabindex="-1"></a><span class="fu">pacf</span>(residuals, <span class="at">main =</span> <span class="st">"PACF of Residuals"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output-display">
+<p><img src="vignette_files/figure-html/unnamed-chunk-23-3.png" class="img-fluid" width="672"></p>
+</div>
+<div class="sourceCode cell-code" id="cb53"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb53-1"><a href="#cb53-1" aria-hidden="true" tabindex="-1"></a><span class="fu">hist</span>(residuals, <span class="at">main =</span> <span class="st">"Histogram of Residuals"</span>, <span class="at">xlab =</span> <span class="st">"Residuals"</span>, <span class="at">breaks =</span> <span class="dv">30</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output-display">
+<p><img src="vignette_files/figure-html/unnamed-chunk-23-4.png" class="img-fluid" width="672"></p>
+</div>
+<div class="sourceCode cell-code" id="cb54"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb54-1"><a href="#cb54-1" aria-hidden="true" tabindex="-1"></a><span class="fu">qqnorm</span>(residuals); <span class="fu">qqline</span>(residuals)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output-display">
+<p><img src="vignette_files/figure-html/unnamed-chunk-23-5.png" class="img-fluid" width="672"></p>
+</div>
+</div>
+<p>Finally, we conduct statistical tests to further assess the residuals:</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb55"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb55-1"><a href="#cb55-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Shapiro-Wilk test for normality</span></span>
+<span id="cb55-2"><a href="#cb55-2" aria-hidden="true" tabindex="-1"></a>shapiro_test <span class="ot">&lt;-</span> <span class="fu">shapiro.test</span>(residuals)</span>
+<span id="cb55-3"><a href="#cb55-3" aria-hidden="true" tabindex="-1"></a><span class="fu">print</span>(shapiro_test)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>
+    Shapiro-Wilk normality test
+
+data:  residuals
+W = 0.87765, p-value &lt; 2.2e-16</code></pre>
+</div>
+<div class="sourceCode cell-code" id="cb57"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb57-1"><a href="#cb57-1" aria-hidden="true" tabindex="-1"></a>ljung_box_test <span class="ot">&lt;-</span> <span class="fu">Box.test</span>(residuals, <span class="at">lag =</span> <span class="dv">12</span>, <span class="at">type =</span> <span class="st">"Ljung-Box"</span>, <span class="at">fitdf =</span> <span class="dv">5</span>)</span>
+<span id="cb57-2"><a href="#cb57-2" aria-hidden="true" tabindex="-1"></a><span class="fu">print</span>(ljung_box_test)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>
+    Box-Ljung test
+
+data:  residuals
+X-squared = 20.325, df = 7, p-value = 0.004909</code></pre>
+</div>
+<div class="sourceCode cell-code" id="cb59"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb59-1"><a href="#cb59-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Ljung-Box test for autocorrelation in squared residuals (to check for ARCH effects)</span></span>
+<span id="cb59-2"><a href="#cb59-2" aria-hidden="true" tabindex="-1"></a><span class="co"># Here also, we use the same lag value</span></span>
+<span id="cb59-3"><a href="#cb59-3" aria-hidden="true" tabindex="-1"></a>ljung_box_test_squared <span class="ot">&lt;-</span> <span class="fu">Box.test</span>(residuals<span class="sc">^</span><span class="dv">2</span>, <span class="at">lag =</span> <span class="dv">12</span>, <span class="at">type =</span> <span class="st">"Ljung-Box"</span>, <span class="at">fitdf =</span> <span class="dv">5</span>)</span>
+<span id="cb59-4"><a href="#cb59-4" aria-hidden="true" tabindex="-1"></a><span class="fu">print</span>(ljung_box_test_squared)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>
+    Box-Ljung test
+
+data:  residuals^2
+X-squared = 126.84, df = 7, p-value &lt; 2.2e-16</code></pre>
+</div>
+</div>
+<p>Shapiro-Wilk Normality Test: This test checks the normality of the residuals. The result (W = 0.87765, p-value &lt; 2.2e-16) suggests a significant deviation from normality. This might indicate that the model fails to capture some aspect of the data’s behavior, a common challenge in economic time series influenced by complex, non-linear factors.</p>
+<p>Box-Ljung Test on Residuals: This test assesses autocorrelation in the residuals. The result (X-squared = 20.325, df = 7, p-value = 0.004909) implies significant autocorrelation, suggesting that the model might not be capturing all the temporal dependencies in the data.</p>
+<p>Box-Ljung Test on Squared Residuals: This test checks for autocorrelation in squared residuals, indicating ARCH effects. The result (X-squared = 126.84, df = 7, p-value &lt; 2.2e-16) points to the presence of time-varying volatility, a common feature in financial data but difficult to model with standard ARIMA.</p>
+<p>The results of the diagnostic tests reveal some limitations of the ARIMA(3,1,2) model in fully capturing the dynamics of the gasoline price data. The complex nature of economic time series, often driven by human behavior and external factors, poses challenges to linear modeling approaches like ARIMA. Future explorations might involve more sophisticated models, including those that can handle non-linearity and volatility, such as GARCH models, or the use of machine learning techniques for more robust forecasting in the face of such complex data.</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb61"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb61-1"><a href="#cb61-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Forecasting future values using the fitted ARIMA model</span></span>
+<span id="cb61-2"><a href="#cb61-2" aria-hidden="true" tabindex="-1"></a>h <span class="ot">&lt;-</span> <span class="fu">length</span>(testing_set)  <span class="co"># Number of periods to forecast should match the length of testing_set</span></span>
+<span id="cb61-3"><a href="#cb61-3" aria-hidden="true" tabindex="-1"></a>forecasted_values <span class="ot">&lt;-</span> <span class="fu">forecast</span>(fit_arima, <span class="at">h =</span> h)</span>
+<span id="cb61-4"><a href="#cb61-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb61-5"><a href="#cb61-5" aria-hidden="true" tabindex="-1"></a><span class="co"># Plotting the forecasted values</span></span>
+<span id="cb61-6"><a href="#cb61-6" aria-hidden="true" tabindex="-1"></a><span class="fu">plot</span>(forecasted_values)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output-display">
+<p><img src="vignette_files/figure-html/unnamed-chunk-25-1.png" class="img-fluid" width="672"></p>
+</div>
+</div>
+<p>The provided plot above illustrates the forecasts from an ARIMA(3,1,2) model alongside historical data. The historical time series data, represented by a fluctuating line, transitions into the forecasted period where a blue line indicates the model’s predicted values, surrounded by shaded areas denoting confidence intervals. These intervals represent the uncertainty inherent in the predictions, with uncertainty naturally broadening as the forecast extends further into the future. Notably, the forecasts appear relatively stable, suggesting that the model either captures the persistence of the series or may not fully reflect potential future volatility. While the visual stability of the forecast is evident, actual model performance should be quantitatively assessed against the actual observed values using metrics like MAE and RMSE, which are not visible on this plot but are crucial for evaluating the model’s predictive accuracy.</p>
+<p>To validate the model, compare the forecasted values against the actual values in the testing set. This comparison can be done using various error metrics:</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb62"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb62-1"><a href="#cb62-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Assuming 'testing_set' contains the actual future values for comparison</span></span>
+<span id="cb62-2"><a href="#cb62-2" aria-hidden="true" tabindex="-1"></a>actual_values <span class="ot">&lt;-</span> testing_set</span>
+<span id="cb62-3"><a href="#cb62-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb62-4"><a href="#cb62-4" aria-hidden="true" tabindex="-1"></a><span class="co"># Extracting the point forecasts</span></span>
+<span id="cb62-5"><a href="#cb62-5" aria-hidden="true" tabindex="-1"></a>point_forecasts <span class="ot">&lt;-</span> forecasted_values<span class="sc">$</span>mean</span>
+<span id="cb62-6"><a href="#cb62-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb62-7"><a href="#cb62-7" aria-hidden="true" tabindex="-1"></a><span class="co"># Calculating error metrics</span></span>
+<span id="cb62-8"><a href="#cb62-8" aria-hidden="true" tabindex="-1"></a>validation_errors <span class="ot">&lt;-</span> actual_values <span class="sc">-</span> point_forecasts</span>
+<span id="cb62-9"><a href="#cb62-9" aria-hidden="true" tabindex="-1"></a>mae <span class="ot">&lt;-</span> <span class="fu">mean</span>(<span class="fu">abs</span>(validation_errors)) <span class="co"># Mean Absolute Error</span></span>
+<span id="cb62-10"><a href="#cb62-10" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb62-11"><a href="#cb62-11" aria-hidden="true" tabindex="-1"></a><span class="co"># Print error metrics</span></span>
+<span id="cb62-12"><a href="#cb62-12" aria-hidden="true" tabindex="-1"></a><span class="fu">print</span>(<span class="fu">paste</span>(<span class="st">"MAE:"</span>, mae))</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>[1] "MAE: 2.96164288179362"</code></pre>
+</div>
+</div>
+<p>This code performs model validation by comparing the actual values from the test set with the forecasted values produced by an ARIMA model. The mean of the forecasted values, forecasted_values$mean, represents the model’s predictions. The code calculates the Mean Absolute Error (MAE) by subtracting these forecasts from the actual observed values to obtain the forecasting errors, then taking the average of their absolute values. The resulting MAE of approximately 2.962 indicates that, on average, the model’s predictions deviate from the true values by about 2.962 units. This metric provides a straightforward assessment of the model’s accuracy, with its magnitude and acceptability dependent on the specific context of the data and the modeling objectives.</p>
+<p>This MAE value is very high compared to the LSTM model’s forecast, and we will compare this result in the conclusion.</p>
+<section id="conclusion" class="level2">
+<h2 class="anchored" data-anchor-id="conclusion">Conclusion</h2>
+</section>
+</section>
+<section id="mae-comparison" class="level1">
+<h1>MAE Comparison</h1>
+<p>After running both the ARIMA and LSTM models, the LSTM model performed far better than the ARIMA model. On our testing data, the ARIMA model has a mean absolute error(MAE) of 2.962 while the LSTM model had an MAE of about 0.08. For gas prices, a low MAE is important because the error amount adds for each gallon of gas you get.</p>
+</section>
+
+</main>
+<!-- /main column -->
+<script id="quarto-html-after-body" type="application/javascript">
+window.document.addEventListener("DOMContentLoaded", function (event) {
+  const toggleBodyColorMode = (bsSheetEl) => {
+    const mode = bsSheetEl.getAttribute("data-mode");
+    const bodyEl = window.document.querySelector("body");
+    if (mode === "dark") {
+      bodyEl.classList.add("quarto-dark");
+      bodyEl.classList.remove("quarto-light");
+    } else {
+      bodyEl.classList.add("quarto-light");
+      bodyEl.classList.remove("quarto-dark");
+    }
+  }
+  const toggleBodyColorPrimary = () => {
+    const bsSheetEl = window.document.querySelector("link#quarto-bootstrap");
+    if (bsSheetEl) {
+      toggleBodyColorMode(bsSheetEl);
+    }
+  }
+  toggleBodyColorPrimary();  
+  const icon = "";
+  const anchorJS = new window.AnchorJS();
+  anchorJS.options = {
+    placement: 'right',
+    icon: icon
+  };
+  anchorJS.add('.anchored');
+  const isCodeAnnotation = (el) => {
+    for (const clz of el.classList) {
+      if (clz.startsWith('code-annotation-')) {                     
+        return true;
+      }
+    }
+    return false;
+  }
+  const clipboard = new window.ClipboardJS('.code-copy-button', {
+    text: function(trigger) {
+      const codeEl = trigger.previousElementSibling.cloneNode(true);
+      for (const childEl of codeEl.children) {
+        if (isCodeAnnotation(childEl)) {
+          childEl.remove();
+        }
+      }
+      return codeEl.innerText;
+    }
+  });
+  clipboard.on('success', function(e) {
+    // button target
+    const button = e.trigger;
+    // don't keep focus
+    button.blur();
+    // flash "checked"
+    button.classList.add('code-copy-button-checked');
+    var currentTitle = button.getAttribute("title");
+    button.setAttribute("title", "Copied!");
+    let tooltip;
+    if (window.bootstrap) {
+      button.setAttribute("data-bs-toggle", "tooltip");
+      button.setAttribute("data-bs-placement", "left");
+      button.setAttribute("data-bs-title", "Copied!");
+      tooltip = new bootstrap.Tooltip(button, 
+        { trigger: "manual", 
+          customClass: "code-copy-button-tooltip",
+          offset: [0, -8]});
+      tooltip.show();    
+    }
+    setTimeout(function() {
+      if (tooltip) {
+        tooltip.hide();
+        button.removeAttribute("data-bs-title");
+        button.removeAttribute("data-bs-toggle");
+        button.removeAttribute("data-bs-placement");
+      }
+      button.setAttribute("title", currentTitle);
+      button.classList.remove('code-copy-button-checked');
+    }, 1000);
+    // clear code selection
+    e.clearSelection();
+  });
+  function tippyHover(el, contentFn) {
+    const config = {
+      allowHTML: true,
+      content: contentFn,
+      maxWidth: 500,
+      delay: 100,
+      arrow: false,
+      appendTo: function(el) {
+          return el.parentElement;
+      },
+      interactive: true,
+      interactiveBorder: 10,
+      theme: 'quarto',
+      placement: 'bottom-start'
+    };
+    window.tippy(el, config); 
+  }
+  const noterefs = window.document.querySelectorAll('a[role="doc-noteref"]');
+  for (var i=0; i<noterefs.length; i++) {
+    const ref = noterefs[i];
+    tippyHover(ref, function() {
+      // use id or data attribute instead here
+      let href = ref.getAttribute('data-footnote-href') || ref.getAttribute('href');
+      try { href = new URL(href).hash; } catch {}
+      const id = href.replace(/^#\/?/, "");
+      const note = window.document.getElementById(id);
+      return note.innerHTML;
+    });
+  }
+      let selectedAnnoteEl;
+      const selectorForAnnotation = ( cell, annotation) => {
+        let cellAttr = 'data-code-cell="' + cell + '"';
+        let lineAttr = 'data-code-annotation="' +  annotation + '"';
+        const selector = 'span[' + cellAttr + '][' + lineAttr + ']';
+        return selector;
+      }
+      const selectCodeLines = (annoteEl) => {
+        const doc = window.document;
+        const targetCell = annoteEl.getAttribute("data-target-cell");
+        const targetAnnotation = annoteEl.getAttribute("data-target-annotation");
+        const annoteSpan = window.document.querySelector(selectorForAnnotation(targetCell, targetAnnotation));
+        const lines = annoteSpan.getAttribute("data-code-lines").split(",");
+        const lineIds = lines.map((line) => {
+          return targetCell + "-" + line;
+        })
+        let top = null;
+        let height = null;
+        let parent = null;
+        if (lineIds.length > 0) {
+            //compute the position of the single el (top and bottom and make a div)
+            const el = window.document.getElementById(lineIds[0]);
+            top = el.offsetTop;
+            height = el.offsetHeight;
+            parent = el.parentElement.parentElement;
+          if (lineIds.length > 1) {
+            const lastEl = window.document.getElementById(lineIds[lineIds.length - 1]);
+            const bottom = lastEl.offsetTop + lastEl.offsetHeight;
+            height = bottom - top;
+          }
+          if (top !== null && height !== null && parent !== null) {
+            // cook up a div (if necessary) and position it 
+            let div = window.document.getElementById("code-annotation-line-highlight");
+            if (div === null) {
+              div = window.document.createElement("div");
+              div.setAttribute("id", "code-annotation-line-highlight");
+              div.style.position = 'absolute';
+              parent.appendChild(div);
+            }
+            div.style.top = top - 2 + "px";
+            div.style.height = height + 4 + "px";
+            let gutterDiv = window.document.getElementById("code-annotation-line-highlight-gutter");
+            if (gutterDiv === null) {
+              gutterDiv = window.document.createElement("div");
+              gutterDiv.setAttribute("id", "code-annotation-line-highlight-gutter");
+              gutterDiv.style.position = 'absolute';
+              const codeCell = window.document.getElementById(targetCell);
+              const gutter = codeCell.querySelector('.code-annotation-gutter');
+              gutter.appendChild(gutterDiv);
+            }
+            gutterDiv.style.top = top - 2 + "px";
+            gutterDiv.style.height = height + 4 + "px";
+          }
+          selectedAnnoteEl = annoteEl;
+        }
+      };
+      const unselectCodeLines = () => {
+        const elementsIds = ["code-annotation-line-highlight", "code-annotation-line-highlight-gutter"];
+        elementsIds.forEach((elId) => {
+          const div = window.document.getElementById(elId);
+          if (div) {
+            div.remove();
+          }
+        });
+        selectedAnnoteEl = undefined;
+      };
+      // Attach click handler to the DT
+      const annoteDls = window.document.querySelectorAll('dt[data-target-cell]');
+      for (const annoteDlNode of annoteDls) {
+        annoteDlNode.addEventListener('click', (event) => {
+          const clickedEl = event.target;
+          if (clickedEl !== selectedAnnoteEl) {
+            unselectCodeLines();
+            const activeEl = window.document.querySelector('dt[data-target-cell].code-annotation-active');
+            if (activeEl) {
+              activeEl.classList.remove('code-annotation-active');
+            }
+            selectCodeLines(clickedEl);
+            clickedEl.classList.add('code-annotation-active');
+          } else {
+            // Unselect the line
+            unselectCodeLines();
+            clickedEl.classList.remove('code-annotation-active');
+          }
+        });
+      }
+  const findCites = (el) => {
+    const parentEl = el.parentElement;
+    if (parentEl) {
+      const cites = parentEl.dataset.cites;
+      if (cites) {
+        return {
+          el,
+          cites: cites.split(' ')
+        };
+      } else {
+        return findCites(el.parentElement)
+      }
+    } else {
+      return undefined;
+    }
+  };
+  var bibliorefs = window.document.querySelectorAll('a[role="doc-biblioref"]');
+  for (var i=0; i<bibliorefs.length; i++) {
+    const ref = bibliorefs[i];
+    const citeInfo = findCites(ref);
+    if (citeInfo) {
+      tippyHover(citeInfo.el, function() {
+        var popup = window.document.createElement('div');
+        citeInfo.cites.forEach(function(cite) {
+          var citeDiv = window.document.createElement('div');
+          citeDiv.classList.add('hanging-indent');
+          citeDiv.classList.add('csl-entry');
+          var biblioDiv = window.document.getElementById('ref-' + cite);
+          if (biblioDiv) {
+            citeDiv.innerHTML = biblioDiv.innerHTML;
+          }
+          popup.appendChild(citeDiv);
+        });
+        return popup.innerHTML;
+      });
+    }
+  }
+});
+</script>
+</div> <!-- /content -->
+
+
+
+</body></html>

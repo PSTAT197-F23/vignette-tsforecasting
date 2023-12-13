@@ -24,16 +24,16 @@ library(tensorflow)
 
 
 ```{r}
-setwd("/Users/gwonheum_moon/Desktop/PSTAT 197/vignette-tsforecasting/data")
+#setwd("/Users/gwonheum_moon/Desktop/PSTAT 197/vignette-tsforecasting/data")
 
-gasoline <- read_csv("processed.csv")
+gasoline <- read_csv("data/processed.csv")
 head(gasoline)
 ```
 First, we need to load the dataset. Since the dataset contains some unnecessary rows and is not formatted correctly, we cleaned our dataset, and we will be using our processed data.
 
 ```{r}
 colnames(gasoline) <- c("Date", "Price")
-gasoline <- gasoline %>% select(Date, Price)
+#gasoline <- gasoline %>% select(Date, Price)
 gasoline$Date <- as.Date(gasoline$Date, "%m/%d/%Y")
 gasoline$Price <- as.numeric(gasoline$Price)
 gasoline <- gasoline %>% arrange(Date)
@@ -68,7 +68,7 @@ grid(nx = NA, ny = NULL, lty = 2, col = "gray", lwd = 2)
 
 From the plot, we can see that the overall price is increasing over time. Multiple fluctuations are found, but the price tends to drop once it hits the peak. It also does not seem to have any clear seasonal pattern.
 
-## Neural Net Architecture
+## LSTM
 We will now do time series analysis on our data using neural networks through the Keras library. We will specifically be using a LSTM model which will dive into in more detail later.
 
 # Creating Time Series
@@ -242,7 +242,7 @@ logdata <- log(training_set)
 # Plot the logtrain data
 ts.plot(logdata, main = "Plot of Log Transformed Training Set",
         ylab = "Log(Price per Gallon)", xlab = "Time")
-var(ts_data)
+var(oil_ts)
 var(logdata)
 ```
 The results show a significant reduction in variance, indicating our transformations were effective.
