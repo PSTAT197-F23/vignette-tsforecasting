@@ -142,3 +142,6 @@ legend('topleft', legend = c('Actual', 'Predicted'), col = c('blue', 'red'), lty
 ```
 
 Looking at the plot it seems that our model actually performed very well and looks very similar to the actual testing data!
+
+# MAE Comparison
+After running both the ARIMA and LSTM models, the LSTM model performed far better than the ARIMA model. On our testing data, the ARIMA model has a mean absolute error(MAE) of 3.05 while the LSTM model had an MAE of about 0.08. For gas prices, a low MAE is important because the error amount adds for each gallon of gas you get.
