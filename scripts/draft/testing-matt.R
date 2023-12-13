@@ -4,9 +4,10 @@ library(forecast)
 library(fda)
 library(ggplot2)
 library(keras)
+library(tensorflow)
 
 set.seed(3722287)
-oil <- read_csv('data/weekly_data.csv', show_col_types = FALSE)
+oil <- read_csv('data/processed.csv', show_col_types = FALSE)
 #oil <- oil[, 1:2]
 colnames(oil) <- c("Date", "Price")
 oil <- oil %>%
@@ -52,6 +53,12 @@ model <- keras_model_sequential() %>%
   layer_lstm(units = 50, input_shape = c(window_size, 1)) %>%
   layer_dense(units = 1)
 
+model2 <- keras_model_sequential() %>%
+  layer_lstm(units = 50, input_shape = c(window_size, 1), return_sequences = TRUE) %>%
+  layer_lstm(units = 50, return_sequences = TRUE) %>%
+  layer_lstm(units = 50) %>%
+  layer_dense(units = 1)
+
 optimizer <- optimizer_nadam(learning_rate = 0.001)
 
 # Compile the model
@@ -61,10 +68,18 @@ model %>% compile(
   metrics = c('mean_absolute_error')
 )
 
+model2 %>% compile(
+  loss = 'mean_squared_error',
+  optimizer = 'adam',
+  metrics = c('mean_absolute_error')
+)
+
 summary(model)
 
+summary(model2)
+
 # Train the model
-history <- model %>% fit(
+history <- model2 %>% fit(
   x = train_sequences_array,
   y = train_labels,
   epochs = 50,
@@ -79,10 +94,10 @@ test_sequences <- create_sequences(test_data, window_size)
 test_sequences_matrix <- test_sequences$sequences
 test_labels <- test_sequences$labels
 
-results <- model %>% evaluate(test_sequences_matrix, test_labels)
+results2 <- model2 %>% evaluate(test_sequences_matrix, test_labels)
 
 # Make predictions
-predictions <- model %>% predict(test_sequences_matrix)
+predictions <- model2 %>% predict(test_sequences_matrix)
 
 # Plot predictions against actual values
 plot(test_dates, test_labels, type = 'l', col = 'blue', ylab = 'Gasoline Prices', xlab = 'Year')
