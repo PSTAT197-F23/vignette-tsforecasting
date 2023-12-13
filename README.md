@@ -17,7 +17,7 @@
     -   `ARIMA Modeling.Rmd`: script containing code for ARIMA Modeling with line annotations
     -   `LSTM Modelling.Rmd`: script containing code for LSTM Modeling with line annotations
 
--   `images` contains .png files of necessary plots we used in the vignette document
+-   `plots` contains .png files of necessary plots we used in the vignette document
 
 **Reference list:** The following are references:
 
